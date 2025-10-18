@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, DollarSign, Clock, Tag, User, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { ArrowLeft, DollarSign, Clock, Tag, User, CheckCircle, XCircle, Send } from 'lucide-react';
 import { getTaskById } from '../../data/mockData';
 
 const TaskDescription: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const task = getTaskById(id || '');
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [experience, setExperience] = useState('');
-  const [isApplying, setIsApplying] = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
+  const [showApprovedModal, setShowApprovedModal] = useState(false);
+  const [showRejectedModal, setShowRejectedModal] = useState(false);
 
   if (!task) {
     return (
@@ -25,22 +23,14 @@ const TaskDescription: React.FC = () => {
     );
   }
 
-  const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'easy': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'medium': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      case 'hard': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
-    }
-  };
+  // Difficulty removed per requirements
 
-  const handleApply = async () => {
-    setIsApplying(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsApplying(false);
-    setHasApplied(true);
-    setShowApplyModal(false);
+  const simulateAIAgentDecision = async () => {
+    // Simulate AI assessment and decision
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    const approved = Math.random() > 0.4;
+    if (approved) setShowApprovedModal(true);
+    else setShowRejectedModal(true);
   };
 
   const daysUntilDeadline = Math.ceil((new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -72,11 +62,6 @@ const TaskDescription: React.FC = () => {
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20">
                   {task.category}
                 </span>
-                {task.difficulty && (
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getDifficultyColor(task.difficulty)}`}>
-                    {task.difficulty}
-                  </span>
-                )}
               </div>
 
               <h1 className="text-3xl font-bold text-white mb-4">{task.title}</h1>
@@ -154,99 +139,44 @@ const TaskDescription: React.FC = () => {
                 </div>
               </div>
 
-              {hasApplied ? (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
-                  <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                  <p className="text-green-400 font-semibold">Application Submitted</p>
-                  <p className="text-sm text-gray-400 mt-1">You'll be notified once the AI reviews your application</p>
-                </div>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowApplyModal(true)}
-                  className="w-full bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors shadow-lg flex items-center justify-center space-x-2"
-                >
-                  <Send className="w-5 h-5" />
-                  <span>Apply for Task</span>
-                </motion.button>
-              )}
-
-              <div className="mt-4 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
-                <div className="flex items-start space-x-2">
-                  <AlertCircle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-gray-300">
-                    Your application will be reviewed by an AI agent to assess your eligibility for this task
-                  </p>
-                </div>
-              </div>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={simulateAIAgentDecision}
+                className="w-full bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors shadow-lg flex items-center justify-center space-x-2"
+              >
+                <Send className="w-5 h-5" />
+                <span>Apply for Task</span>
+              </motion.button>
             </motion.div>
           </div>
         </div>
       </div>
 
-      {/* Apply Modal */}
+      {/* AI Decision Modals */}
       <AnimatePresence>
-        {showApplyModal && (
+        {showApprovedModal && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowApplyModal(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold text-white mb-4">Apply for Task</h2>
-                <p className="text-gray-400 mb-6">
-                  Tell us about your experience and why you're a good fit for this task. The AI agent will review your application.
-                </p>
-
-                <div className="mb-6">
-                  <label htmlFor="experience" className="block text-sm font-semibold text-white mb-2">
-                    Your Experience & Qualifications *
-                  </label>
-                  <textarea
-                    id="experience"
-                    value={experience}
-                    onChange={(e) => setExperience(e.target.value)}
-                    rows={8}
-                    placeholder="Describe your relevant experience, skills, and why you're qualified for this task..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors resize-none"
-                  />
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2">AI Assessment</h3>
-                  <p className="text-sm text-gray-300">
-                    After submission, an AI agent will analyze your experience, verify your qualifications, and determine your eligibility for this task. You'll receive feedback within minutes.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-end space-x-4">
-                  <button
-                    onClick={() => setShowApplyModal(false)}
-                    disabled={isApplying}
-                    className="px-6 py-3 rounded-lg text-gray-300 hover:text-white transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <motion.button
-                    whileHover={{ scale: isApplying ? 1 : 1.02 }}
-                    whileTap={{ scale: isApplying ? 1 : 0.98 }}
-                    onClick={handleApply}
-                    disabled={isApplying || experience.trim().length < 20}
-                    className="bg-orange-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isApplying ? 'Submitting...' : 'Submit Application'}
-                  </motion.button>
-                </div>
+            <motion.div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowApprovedModal(false)} />
+            <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}>
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-md w-full text-center">
+                <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                <h3 className="text-xl font-semibold text-white mb-2">You're approved!</h3>
+                <p className="text-gray-300 mb-6">You are a great fit for this task. You can now proceed to work and submit your result.</p>
+                <button onClick={() => setShowApprovedModal(false)} className="bg-orange-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-orange-600 transition-colors">Start</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+        {showRejectedModal && (
+          <>
+            <motion.div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowRejectedModal(false)} />
+            <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}>
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-md w-full text-center">
+                <XCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                <h3 className="text-xl font-semibold text-white mb-2">Sorry, not a match</h3>
+                <p className="text-gray-300 mb-6">Your experience does not match the requirements for this task. Please browse other tasks.</p>
+                <button onClick={() => setShowRejectedModal(false)} className="bg-gray-700 text-white px-6 py-2 rounded-md font-semibold hover:bg-gray-600 transition-colors">Close</button>
               </div>
             </motion.div>
           </>

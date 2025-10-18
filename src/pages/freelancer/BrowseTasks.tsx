@@ -16,14 +16,7 @@ const BrowseTasks: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'easy': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'medium': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      case 'hard': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
-    }
-  };
+  // Difficulty labels removed per requirements
 
   const categories: (TaskCategory | 'all')[] = ['all', 'coding', 'design', 'translation', 'math', 'writing', 'other'];
 
@@ -125,11 +118,6 @@ const BrowseTasks: React.FC = () => {
                       <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20">
                         {task.category}
                       </span>
-                      {task.difficulty && (
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getDifficultyColor(task.difficulty)}`}>
-                          {task.difficulty}
-                        </span>
-                      )}
                     </div>
 
                     {/* Title */}
@@ -142,10 +130,7 @@ const BrowseTasks: React.FC = () => {
                       {task.description}
                     </p>
 
-                    {/* Publisher */}
-                    <p className="text-xs text-gray-500 mb-3">
-                      Posted by {task.publisherName}
-                    </p>
+                    {/* Publisher removed per requirements */}
 
                     {/* Footer Info */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
