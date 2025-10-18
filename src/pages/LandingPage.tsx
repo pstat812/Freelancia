@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, type Transition, type VariantLabels, type Target, type TargetAndTransition, type Variants } from 'framer-motion';
 import { Briefcase, CheckCircle, TrendingUp, Shield, Zap, Twitter, Linkedin, Github } from 'lucide-react';
 
@@ -220,6 +221,7 @@ interface Dot {
 
 const FreelancePlatform: React.FC = () => {
   // navigation handled elsewhere
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
   // Wallet connect is handled in the global header
@@ -416,7 +418,10 @@ const FreelancePlatform: React.FC = () => {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: contentDelay + itemDelayIncrement * 2 } }
   };
-  // CTA removed
+  const ctaVariants: Variants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: contentDelay + itemDelayIncrement * 3 } }
+  };
   const featuresVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.5, delay: contentDelay + itemDelayIncrement * 4 } }
@@ -478,13 +483,28 @@ const FreelancePlatform: React.FC = () => {
           A decentralized freelance platform powered by AI agents. Post tasks, find verified freelancers, and get paid securely with Web3 technology.
         </motion.p>
 
-        {/* CTA removed; wallet connect is available in header on other pages */}
+        <motion.div
+          variants={ctaVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex items-center justify-center mb-16"
+        >
+          <motion.button
+            onClick={() => navigate('/dashboard')}
+            className="bg-orange-500 text-white px-10 py-3.5 rounded-md text-base font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-lg hover:shadow-xl"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          >
+            Get Started
+          </motion.button>
+        </motion.div>
 
         <motion.div
           variants={featuresVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-0 mt-24"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-0"
         >
           <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 backdrop-blur-sm">
             <CheckCircle className="w-10 h-10 text-orange-500 mb-4 mx-auto" />

@@ -427,24 +427,6 @@ const Profile: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Save Button (bottom) */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="flex justify-end"
-        >
-          <motion.button
-            onClick={handleSave}
-            disabled={isSaving}
-            whileHover={{ scale: isSaving ? 1 : 1.02 }}
-            whileTap={{ scale: isSaving ? 1 : 0.98 }}
-            className="bg-orange-500 text-white px-8 py-3 rounded-md font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-5 h-5" />
-            <span>{isSaving ? 'Saving...' : 'Save Profile'}</span>
-          </motion.button>
-        </motion.div>
       </div>
     </div>
   );

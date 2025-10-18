@@ -13,12 +13,19 @@ const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
   const location = useLocation();
   const isPublisher = userRole === 'publisher';
   const navigate = useNavigate();
-  const { walletAddress, isConnecting, connectWallet } = useWallet();
+  const { walletAddress, isConnecting, connectWallet, disconnectWallet } = useWallet();
 
   const handleWalletClick = async () => {
-    if (!walletAddress) {
-      await connectWallet();
+    if (walletAddress) {
+      const shouldLogout = window.confirm('Disconnect wallet and log out?');
+      if (shouldLogout) {
+        disconnectWallet();
+        navigate('/');
+      }
+      return;
     }
+
+    await connectWallet();
     navigate('/profile');
   };
 
