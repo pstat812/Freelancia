@@ -5,7 +5,7 @@ import { Plus, Clock, DollarSign, Users, CheckCircle } from 'lucide-react';
 import { getTasksByPublisher, currentUser, type TaskStatus } from '../../data/mockData';
 
 const YourTasks: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'open' | 'completed' | 'expired'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'in-progress' | 'completed' | 'expired'>('all');
   const userTasks = getTasksByPublisher(currentUser.id);
 
   const filteredTasks = userTasks.filter(task => {
@@ -56,10 +56,10 @@ const YourTasks: React.FC = () => {
 
           {/* Filter Tabs */}
           <div className="flex flex-wrap gap-2">
-            {['all', 'open', 'completed', 'expired'].map((status) => (
+            {['all', 'open', 'in-progress', 'completed', 'expired'].map((status) => (
               <button
                 key={status}
-                onClick={() => setFilter(status as 'all' | 'open' | 'completed' | 'expired')}
+                onClick={() => setFilter(status as 'all' | 'open' | 'in-progress' | 'completed' | 'expired')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   filter === status
                     ? 'bg-orange-500 text-white'
