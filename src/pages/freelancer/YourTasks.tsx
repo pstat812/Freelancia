@@ -57,14 +57,14 @@ const YourTasks: React.FC = () => {
               const hasSubmission = task.submissions.length > 0;
 
               return (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  whileHover={{ x: 4 }}
-                  className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 hover:border-orange-500/50 transition-all"
-                >
+                <Link key={task.id} to={`/freelancer/task/${task.id}`}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    whileHover={{ x: 4 }}
+                    className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 hover:border-orange-500/50 transition-all cursor-pointer"
+                  >
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex-grow">
                       <h3 className="text-xl font-semibold text-white mb-3">{task.title}</h3>
@@ -88,28 +88,7 @@ const YourTasks: React.FC = () => {
                       {/* AI Assessment removed */}
                     </div>
 
-                    <div className="flex flex-col space-y-2 lg:ml-6">
-                      <Link to={`/freelancer/task/${task.id}`}>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full lg:w-auto bg-gray-700 text-white px-6 py-2 rounded-md text-sm font-semibold hover:bg-gray-600 transition-colors whitespace-nowrap"
-                        >
-                          View Details
-                        </motion.button>
-                      </Link>
-                      {!hasSubmission && (
-                        <Link to={`/freelancer/submit/${task.id}`}>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="w-full lg:w-auto bg-orange-500 text-white px-6 py-2 rounded-md text-sm font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center space-x-2 whitespace-nowrap"
-                          >
-                            <Send className="w-4 h-4" />
-                            <span>Submit Work</span>
-                          </motion.button>
-                        </Link>
-                      )}
+                      <div className="flex flex-col space-y-2 lg:ml-6">
                       {hasSubmission && (
                         <div className="flex items-center space-x-2 text-sm text-green-400 bg-green-400/10 px-4 py-2 rounded-md border border-green-400/20">
                           <CheckCircle className="w-4 h-4" />
@@ -118,7 +97,8 @@ const YourTasks: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </motion.div>
+                  </motion.div>
+                </Link>
               );
             })}
           </motion.div>
