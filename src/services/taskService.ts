@@ -136,7 +136,7 @@ export class TaskService {
 
   // Assign freelancer to task
   async assignFreelancer(taskId: string, freelancerWallet: string): Promise<Task> {
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('tasks')
       .update({
         freelancer_wallet: freelancerWallet,
@@ -152,6 +152,22 @@ export class TaskService {
     }
 
     return data as Task;
+  }
+
+  // Get tasks assigned to freelancer
+  async getTasksByFreelancer(freelancerWallet: string): Promise<Task[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('freelancer_wallet', freelancerWallet)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching freelancer tasks:', error);
+      throw new Error(`Error fetching tasks: ${error.message}`);
+    }
+
+    return (data as Task[]) || [];
   }
 }
 

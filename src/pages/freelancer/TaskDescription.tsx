@@ -1,33 +1,63 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, DollarSign, Clock, User, CheckCircle, Upload, FileCode } from 'lucide-react';
-import { getTaskById } from '../../data/mockData';
+import { motion } from 'framer-motion';
+import { ArrowLeft, DollarSign, Clock, Tag, CheckCircle } from 'lucide-react';
+import { taskService, type Task } from '../../services/taskService';
 
 const TaskDescription: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const task = getTaskById(id || '');
-  // Submission state (multi-entry)
-  type EntryType = 'image' | 'text' | 'code' | 'pdf';
-  interface SubmissionEntry {
-    id: string;
-    type: EntryType;
-    text?: string; // for text/code
-    file?: File; // for image/pdf
-    preview?: string; // data URL or filename
-  }
-  const [entries, setEntries] = useState<SubmissionEntry[]>([
-    { id: crypto.randomUUID(), type: 'text', text: '' }
-  ]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [task, setTask] = useState<Task | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const fileInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
 
-  if (!task) {
+  useEffect(() => {
+    if (id) {
+      loadTask();
+    }
+  }, [id]);
+
+  const loadTask = async () => {
+    if (!id) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedTask = await taskService.getTaskById(id);
+      setTask(fetchedTask);
+    } catch (err: any) {
+      console.error('Error loading task:', err);
+      setError(err.message || 'Failed to load task');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApply = async () => {
+    // TODO: Implement application logic in next phase
+    setIsApplying(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsApplying(false);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
+
+  if (error || !task) {
     return (
       <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Task Not Found</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            {error || 'Task Not Found'}
+          </h2>
           <Link to="/freelancer/browse" className="text-orange-500 hover:text-orange-400">
             Return to Browse Tasks
           </Link>
@@ -35,56 +65,6 @@ const TaskDescription: React.FC = () => {
       </div>
     );
   }
-
-  // Difficulty removed per requirements
-
-  const addEntry = () => {
-    setEntries(prev => [...prev, { id: crypto.randomUUID(), type: 'text', text: '' }]);
-  };
-
-  const removeEntry = (id: string) => {
-    setEntries(prev => prev.filter(e => e.id !== id));
-  };
-
-  const updateEntryType = (id: string, type: EntryType) => {
-    setEntries(prev => prev.map(e => e.id === id ? { id, type, text: type === 'text' || type === 'code' ? (e.text || '') : undefined, file: undefined, preview: undefined } : e));
-  };
-
-  const handleFileChange = (id: string, file?: File) => {
-    if (!file) return;
-    setEntries(prev => prev.map(e => {
-      if (e.id !== id) return e;
-      const entry = { ...e, file } as SubmissionEntry;
-      if (e.type === 'image') {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setEntries(curr => curr.map(x => x.id === id ? { ...entry, preview: reader.result as string } : x));
-        };
-        reader.readAsDataURL(file);
-      } else if (e.type === 'pdf') {
-        entry.preview = file.name;
-      } else if (e.type === 'code' || e.type === 'text') {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setEntries(curr => curr.map(x => x.id === id ? { ...entry, text: (reader.result as string) || '' } : x));
-        };
-        reader.readAsText(file);
-      }
-      return entry;
-    }));
-  };
-
-  const handleTextChange = (id: string, text: string) => {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, text } : e));
-  };
-
-  const submitAll = async () => {
-    setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2500);
-  };
 
   const daysUntilDeadline = Math.ceil((new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
@@ -120,10 +100,12 @@ const TaskDescription: React.FC = () => {
               <h1 className="text-3xl font-bold text-white mb-4">{task.title}</h1>
 
               <div className="flex items-center space-x-2 text-gray-400 text-sm mb-6">
-                <User className="w-4 h-4" />
-                <span>Posted by {task.publisherName}</span>
+                <Tag className="w-4 h-4" />
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                  {task.category}
+                </span>
                 <span className="text-gray-600">•</span>
-                <span>{new Date(task.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                <span>{new Date(task.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
               </div>
 
               <div>
@@ -185,112 +167,32 @@ const TaskDescription: React.FC = () => {
                 </div>
               </div>
 
-              {/* Apply removed; this page includes submission section below */}
+              <motion.button
+                onClick={handleApply}
+                disabled={isApplying || showSuccess}
+                whileHover={{ scale: isApplying || showSuccess ? 1 : 1.03 }}
+                whileTap={{ scale: isApplying || showSuccess ? 1 : 0.97 }}
+                className={`w-full py-4 rounded-lg text-base font-semibold transition-all ${
+                  showSuccess
+                    ? 'bg-green-500/20 text-green-400 border-2 border-green-500/40 cursor-default'
+                    : isApplying
+                    ? 'bg-orange-500/50 text-white cursor-not-allowed'
+                    : 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg'
+                }`}
+              >
+                {showSuccess ? (
+                  <span className="flex items-center justify-center space-x-2">
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Application Sent!</span>
+                  </span>
+                ) : isApplying ? (
+                  'Applying...'
+                ) : (
+                  'Apply for Task'
+                )}
+              </motion.button>
             </motion.div>
           </div>
-        </div>
-      
-        {/* Submission Section (multi-entry) */}
-        <div className="max-w-5xl mx-auto mt-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-white">Submit Your Work</h2>
-              <button onClick={addEntry} className="text-orange-500 hover:text-orange-400 text-sm font-medium">+ Add Item</button>
-            </div>
-
-            <div className="space-y-6">
-              {entries.map((entry, index) => (
-                <div key={entry.id} className="bg-gray-900/40 border border-gray-700/40 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm text-gray-400">Item {index + 1}</div>
-                    {entries.length > 1 && (
-                      <button onClick={() => removeEntry(entry.id)} className="text-red-400 hover:text-red-300 text-sm">Remove</button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-white mb-2">Type</label>
-                      <select
-                        value={entry.type}
-                        onChange={(e) => updateEntryType(entry.id, e.target.value as EntryType)}
-                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                      >
-                        <option value="text">Text</option>
-                        <option value="code">Code</option>
-                        <option value="image">Image</option>
-                        <option value="pdf">PDF</option>
-                      </select>
-                    </div>
-                    <div className="lg:col-span-3">
-                      {(entry.type === 'text' || entry.type === 'code') && (
-                        <textarea
-                          value={entry.text || ''}
-                          onChange={(e) => handleTextChange(entry.id, e.target.value)}
-                          rows={entry.type === 'code' ? 8 : 5}
-                          placeholder={entry.type === 'code' ? 'Paste your code here...' : 'Write your description here...'}
-                          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
-                        />
-                      )}
-                      {(entry.type === 'image' || entry.type === 'pdf') && (
-                        <div>
-                          <div
-                            className="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-orange-500 transition-colors cursor-pointer"
-                            onClick={() => {
-                              const input = fileInputsRef.current[entry.id];
-                              if (input) input.click();
-                            }}
-                          >
-                            <Upload className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                            <div className="text-sm text-gray-300">Click to upload {entry.type.toUpperCase()}</div>
-                          </div>
-                          <input
-                            ref={(el) => { fileInputsRef.current[entry.id] = el; }}
-                            type="file"
-                            accept={entry.type === 'image' ? '.jpg,.jpeg,.png,.gif' : '.pdf'}
-                            onChange={(e) => handleFileChange(entry.id, e.target.files?.[0])}
-                            className="hidden"
-                          />
-                          {entry.type === 'image' && entry.preview && (
-                            <img src={entry.preview} alt="Preview" className="mt-3 max-w-full rounded-lg border border-gray-700" />
-                          )}
-                          {entry.type === 'pdf' && entry.preview && (
-                            <div className="mt-3 text-sm text-gray-400 flex items-center space-x-2">
-                              <FileCode className="w-4 h-4" />
-                              <span>{entry.preview}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-end mt-6">
-              <motion.button
-                whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
-                whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-                onClick={submitAll}
-                disabled={isSubmitting || entries.length === 0}
-                className="bg-orange-500 text-white px-8 py-3 rounded-md font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Work'}
-              </motion.button>
-            </div>
-
-            <AnimatePresence>
-              {showSuccess && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 text-green-400 text-sm">
-                  <CheckCircle className="inline w-4 h-4 mr-1" /> Submission received!
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
         </div>
       </div>
     </div>

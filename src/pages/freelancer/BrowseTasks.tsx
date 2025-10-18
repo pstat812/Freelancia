@@ -1,22 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { DollarSign, Clock, Tag, Search, TrendingUp } from 'lucide-react';
-import { getAvailableTasks, type TaskCategory } from '../../data/mockData';
+import { DollarSign, Clock, Search, TrendingUp } from 'lucide-react';
+import { useWallet } from '../../contexts/WalletContext';
+import { taskService, type Task, type TaskCategory } from '../../services/taskService';
 
 const BrowseTasks: React.FC = () => {
+  const { walletAddress } = useWallet();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | 'all'>('all');
-  const availableTasks = getAvailableTasks();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredTasks = availableTasks.filter(task => {
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const allTasks = await taskService.getOpenTasks();
+      
+      // Filter out tasks created by the current user
+      const filteredByUser = walletAddress 
+        ? allTasks.filter(task => task.client_wallet.toLowerCase() !== walletAddress.toLowerCase())
+        : allTasks;
+      
+      setTasks(filteredByUser);
+    } catch (err: any) {
+      console.error('Error loading tasks:', err);
+      setError(err.message || 'Failed to load tasks');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || task.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
-
-  // Difficulty labels removed per requirements
 
   const categories: (TaskCategory | 'all')[] = ['all', 'coding', 'design', 'translation', 'math', 'writing', 'other'];
 
@@ -74,15 +100,28 @@ const BrowseTasks: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Results Count */}
-        <div className="mb-6">
-          <p className="text-gray-400">
-            Showing <span className="text-white font-semibold">{filteredTasks.length}</span> {filteredTasks.length === 1 ? 'task' : 'tasks'}
-          </p>
-        </div>
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm mb-6">
+            {error}
+          </div>
+        )}
 
-        {/* Tasks Grid */}
-        {filteredTasks.length === 0 ? (
+        {/* Results Count */}
+        {!isLoading && (
+          <div className="mb-6">
+            <p className="text-gray-400">
+              Showing <span className="text-white font-semibold">{filteredTasks.length}</span> {filteredTasks.length === 1 ? 'task' : 'tasks'}
+            </p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+          </div>
+        ) : filteredTasks.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
