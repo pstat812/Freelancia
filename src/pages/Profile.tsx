@@ -1,23 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Briefcase, GraduationCap, Award, Plus, X, Save } from 'lucide-react';
+import { User, Briefcase, GraduationCap, Award, Plus, X, Save, CheckCircle } from 'lucide-react';
+import { useWallet } from '../contexts/WalletContext';
+import { userService } from '../services/userService';
+import type { WorkExperience as DBWorkExperience, Education as DBEducation } from '../services/supabase';
 
-interface WorkExperience {
+interface WorkExperience extends DBWorkExperience {
   id: string;
-  company: string;
-  position: string;
-  duration: string;
-  description: string;
 }
 
-interface Education {
+interface Education extends DBEducation {
   id: string;
-  institution: string;
-  degree: string;
-  year: string;
 }
 
 const Profile: React.FC = () => {
+  const { walletAddress, user, refreshUser } = useWallet();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState<string[]>(['']);
@@ -29,6 +26,30 @@ const Profile: React.FC = () => {
   ]);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load user profile data
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setDescription(user.description || '');
+      setSkills(user.skills && user.skills.length > 0 ? user.skills : ['']);
+      
+      // Add IDs to work experience for UI management
+      const expWithIds = user.work_experience && user.work_experience.length > 0
+        ? user.work_experience.map((exp, idx) => ({ ...exp, id: idx.toString() }))
+        : [{ id: '1', company: '', position: '', duration: '', description: '' }];
+      setWorkExperience(expWithIds);
+      
+      // Add IDs to education for UI management
+      const eduWithIds = user.education && user.education.length > 0
+        ? user.education.map((edu, idx) => ({ ...edu, id: idx.toString() }))
+        : [{ id: '1', institution: '', degree: '', year: '' }];
+      setEducation(eduWithIds);
+      
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const handleAddSkill = () => {
     setSkills([...skills, '']);
@@ -87,13 +108,73 @@ const Profile: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!walletAddress) {
+      alert('Please connect your wallet first!');
+      return;
+    }
+
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSaving(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    try {
+      // Filter out empty skills
+      const cleanedSkills = skills.filter(skill => skill.trim() !== '');
+      
+      // Remove IDs from work experience and education for DB storage
+      const cleanedWorkExp = workExperience
+        .filter(exp => exp.company.trim() || exp.position.trim())
+        .map(({ id, ...rest }) => rest);
+      
+      const cleanedEdu = education
+        .filter(edu => edu.institution.trim() || edu.degree.trim())
+        .map(({ id, ...rest }) => rest);
+
+      // Save to Supabase
+      await userService.updateProfile(walletAddress, {
+        name,
+        description,
+        skills: cleanedSkills,
+        work_experience: cleanedWorkExp,
+        education: cleanedEdu,
+      });
+
+      // Refresh user data
+      await refreshUser();
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      alert(`Failed to save profile: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  // Show wallet connection prompt if not connected
+  if (!walletAddress) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12">
+            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Wallet Not Connected</h2>
+            <p className="text-gray-400 mb-6">Please connect your wallet to view and edit your profile.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 sm:px-6 lg:px-8">
