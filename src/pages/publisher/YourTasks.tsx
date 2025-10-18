@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Plus, Clock, DollarSign, Users, CheckCircle } from 'lucide-react';
+import { Plus, Clock, CheckCircle } from 'lucide-react';
 import { getTasksByPublisher, currentUser, type TaskStatus } from '../../data/mockData';
 
 const YourTasks: React.FC = () => {
@@ -133,20 +133,10 @@ const YourTasks: React.FC = () => {
                     </p>
 
                     {/* Footer Info */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
-                      <div className="flex items-center space-x-1 text-orange-500">
-                        <DollarSign className="w-4 h-4" />
-                        <span className="font-semibold">{task.budget} PYUSD</span>
-                      </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-400">
-                        <div className="flex items-center space-x-1" title="Applications">
-                          <Users className="w-4 h-4" />
-                          <span>{task.applications.length}</span>
-                        </div>
-                        <div className="flex items-center space-x-1" title="Deadline">
-                          <Clock className="w-4 h-4" />
-                          <span>{new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        </div>
+                    <div className="flex items-center justify-end pt-4 border-t border-gray-700/50">
+                      <div className="flex items-center space-x-1 text-sm text-gray-400" title="Deadline">
+                        <Clock className="w-4 h-4" />
+                        <span>{new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                       </div>
                     </div>
                   </div>

@@ -48,17 +48,7 @@ const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
           <nav className="hidden md:flex items-center space-x-8">
             {isPublisher ? (
               <>
-                <Link
-                  to="/publisher/tasks"
-                  className={`text-sm font-medium transition-colors ${
-                    location.pathname.includes('/publisher/tasks')
-                      ? 'text-orange-500'
-                      : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  Your Tasks
-                </Link>
-               
+                {/* Publisher navigation removed */}
               </>
             ) : (
               <>
