@@ -1,32 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, DollarSign, Clock, Tag, CheckCircle, XCircle, AlertCircle, User, FileText, Image as ImageIcon, Code, FileCode } from 'lucide-react';
-import { getTaskById, deleteTaskById } from '../../data/mockData';
+import { ArrowLeft, DollarSign, Clock, Tag, XCircle } from 'lucide-react';
+import { taskService, type Task } from '../../services/taskService';
 
 const TaskDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const task = getTaskById(id || '');
   const navigate = useNavigate();
+  const [task, setTask] = useState<Task | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDeleteTask = () => {
+  useEffect(() => {
+    if (id) {
+      loadTask();
+    }
+  }, [id]);
+
+  const loadTask = async () => {
+    if (!id) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedTask = await taskService.getTaskById(id);
+      setTask(fetchedTask);
+    } catch (err: any) {
+      console.error('Error loading task:', err);
+      setError(err.message || 'Failed to load task');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteTask = async () => {
     if (!task) return;
     const confirmed = window.confirm('Delete this task? This action cannot be undone.');
     if (!confirmed) return;
 
-    const success = deleteTaskById(task.id);
-    if (success) {
+    try {
+      await taskService.deleteTask(task.id);
       navigate('/publisher/tasks');
-    } else {
-      alert('Failed to delete task.');
+    } catch (err: any) {
+      console.error('Error deleting task:', err);
+      alert(`Failed to delete task: ${err.message}`);
     }
   };
 
-  if (!task) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
+
+  if (error || !task) {
     return (
       <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Task Not Found</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            {error || 'Task Not Found'}
+          </h2>
           <Link to="/publisher/tasks" className="text-orange-500 hover:text-orange-400">
             Return to Your Tasks
           </Link>
@@ -34,27 +69,6 @@ const TaskDetail: React.FC = () => {
       </div>
     );
   }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'pending': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      case 'rejected': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      case 'verified': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'submitted': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
-    }
-  };
-
-  const getFileIcon = (fileType?: string) => {
-    switch (fileType) {
-      case 'image': return <ImageIcon className="w-5 h-5" />;
-      case 'code': return <Code className="w-5 h-5" />;
-      case 'text': return <FileText className="w-5 h-5" />;
-      case 'pdf': return <FileCode className="w-5 h-5" />;
-      default: return <FileText className="w-5 h-5" />;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 sm:px-6 lg:px-8">
@@ -121,134 +135,29 @@ const TaskDetail: React.FC = () => {
               ))}
             </ul>
           </div>
-        </motion.div>
 
-        {/* Assigned Freelancer */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8 mb-6"
-        >
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Assigned Freelancer
-          </h2>
-          {task.applications.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No freelancer assigned</p>
-          ) : (
-            (() => {
-              const application = task.applications[0];
-              return (
-                <div
-                  key={application.id}
-                  className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-6"
-                >
-                  <div className="flex items-start mb-4">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center mr-3">
-                      <User className="w-5 h-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white">{application.freelancerName}</h3>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-white mb-2">Description</h4>
-                    <p className="text-sm text-gray-300">{application.experience}</p>
-                  </div>
-                </div>
-              );
-            })()
-          )}
-        </motion.div>
-
-        {/* Submissions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8"
-        >
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Submissions ({task.submissions.length})
-          </h2>
-          {task.submissions.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No submissions yet</p>
-          ) : (
-            <div className="space-y-6">
-              {task.submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-6"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-orange-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-white">{submission.freelancerName}</h3>
-                        <p className="text-sm text-gray-400">
-                          Submitted {new Date(submission.submittedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(submission.status)}`}>
-                      {submission.status.charAt(0).toUpperCase() + submission.status.slice(1).replace('-', ' ')}
-                    </span>
-                  </div>
-
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-white mb-2">Submission</h4>
-                    <p className="text-sm text-gray-300 mb-3">{submission.content}</p>
-                    {submission.fileUrl && (
-                      <div className="flex items-center space-x-2 text-sm text-orange-500">
-                        {getFileIcon(submission.fileType)}
-                        <a href={submission.fileUrl} className="hover:underline">
-                          View {submission.fileType || 'file'}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {submission.aiVerification && (
-                    <div className={`border rounded-lg p-4 ${
-                      submission.aiVerification.verified 
-                        ? 'bg-green-900/20 border-green-500/30' 
-                        : 'bg-red-900/20 border-red-500/30'
-                    }`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold text-white flex items-center">
-                          {submission.aiVerification.verified ? (
-                            <CheckCircle className="w-4 h-4 text-green-400 mr-2" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-red-400 mr-2" />
-                          )}
-                          AI Verification
-                        </h4>
-                        <span className={`text-sm font-semibold ${
-                          submission.aiVerification.verified ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          Score: {submission.aiVerification.score}/100
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-300 mb-2">{submission.aiVerification.feedback}</p>
-                      <p className="text-xs text-gray-500">
-                        Verified on {new Date(submission.aiVerification.verifiedAt).toLocaleDateString()}
-                      </p>
-                      {submission.aiVerification.verified && task.status === 'submitted' && (
-                        <div className="mt-4 pt-4 border-t border-gray-700/50">
-                          <div className="flex items-center text-sm text-green-400">
-                            <AlertCircle className="w-4 h-4 mr-2" />
-                            <span>Payment of {task.budget} PYUSD ready to be released</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+          {/* Status Badge */}
+          <div className="mt-6 pt-6 border-t border-gray-700/50">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Status:</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                task.status === 'open' ? 'text-blue-400 bg-blue-400/10 border-blue-400/20' :
+                task.status === 'in-progress' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' :
+                task.status === 'completed' ? 'text-green-400 bg-green-400/10 border-green-400/20' :
+                'text-red-400 bg-red-400/10 border-red-400/20'
+              }`}>
+                {task.status.charAt(0).toUpperCase() + task.status.slice(1).replace('-', ' ')}
+              </span>
             </div>
-          )}
+            {task.freelancer_wallet && (
+              <div className="mt-3 flex items-center space-x-2">
+                <span className="text-sm text-gray-400">Assigned to:</span>
+                <span className="text-sm text-white font-mono">
+                  {task.freelancer_wallet.slice(0, 6)}...{task.freelancer_wallet.slice(-4)}
+                </span>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
     </div>

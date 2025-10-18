@@ -1,14 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Plus, Clock, CheckCircle } from 'lucide-react';
-import { getTasksByPublisher, currentUser, type TaskStatus } from '../../data/mockData';
+import { useWallet } from '../../contexts/WalletContext';
+import { taskService, type Task, type TaskStatus } from '../../services/taskService';
 
 const YourTasks: React.FC = () => {
+  const { walletAddress } = useWallet();
   const [filter, setFilter] = useState<'all' | 'open' | 'in-progress' | 'completed' | 'expired'>('all');
-  const userTasks = getTasksByPublisher(currentUser.id);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredTasks = userTasks.filter(task => {
+  useEffect(() => {
+    if (walletAddress) {
+      loadTasks();
+    }
+  }, [walletAddress]);
+
+  const loadTasks = async () => {
+    if (!walletAddress) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedTasks = await taskService.getTasksByClient(walletAddress);
+      setTasks(fetchedTasks);
+    } catch (err: any) {
+      console.error('Error loading tasks:', err);
+      setError(err.message || 'Failed to load tasks');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredTasks = tasks.filter(task => {
     if (filter === 'all') return true;
     if (filter === 'expired') return new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
     return task.status === filter;
@@ -72,8 +98,19 @@ const YourTasks: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Tasks Grid */}
-        {filteredTasks.length === 0 ? (
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+          </div>
+        ) : filteredTasks.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

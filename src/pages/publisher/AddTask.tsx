@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, DollarSign, Calendar, Tag, FileText, CheckCircle } from 'lucide-react';
-import type { TaskCategory } from '../../data/mockData';
+import { useWallet } from '../../contexts/WalletContext';
+import { taskService, type TaskCategory } from '../../services/taskService';
 
 const AddTask: React.FC = () => {
   const navigate = useNavigate();
+  const { walletAddress } = useWallet();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -16,6 +18,7 @@ const AddTask: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const categories: TaskCategory[] = ['coding', 'design', 'translation', 'math', 'writing', 'other'];
 
@@ -52,18 +55,41 @@ const AddTask: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!walletAddress) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
     setIsSubmitting(true);
+    setError(null);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // Filter out empty requirements
+      const cleanedRequirements = formData.requirements.filter(req => req.trim() !== '');
+      
+      // Create task in database
+      await taskService.createTask(walletAddress, {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        budget: parseFloat(formData.budget),
+        deadline: new Date(formData.deadline).toISOString(),
+        requirements: cleanedRequirements,
+      });
 
-    setIsSubmitting(false);
-    setShowSuccess(true);
+      setIsSubmitting(false);
+      setShowSuccess(true);
 
-    // Redirect after showing success message
-    setTimeout(() => {
-      navigate('/publisher/tasks');
-    }, 2000);
+      // Redirect after showing success message
+      setTimeout(() => {
+        navigate('/publisher/tasks');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Error creating task:', err);
+      setError(err.message || 'Failed to create task. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   if (showSuccess) {
@@ -116,6 +142,13 @@ const AddTask: React.FC = () => {
           onSubmit={handleSubmit}
           className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8 space-y-6"
         >
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Task Title */}
           <div>
             <label htmlFor="title" className="block text-sm font-semibold text-white mb-2">
