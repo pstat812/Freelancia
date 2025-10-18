@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { motion, AnimatePresence, type Transition, type VariantLabels, type Target, type TargetAndTransition, type Variants } from 'framer-motion';
-import { Briefcase, CheckCircle, TrendingUp, Shield, Zap, Twitter, Linkedin, Github, Wallet } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Briefcase, CheckCircle, TrendingUp, Shield, Zap, Twitter, Linkedin, Github } from 'lucide-react';
 
 function cn(...classes: (string | undefined | null | boolean)[]): string {
   return classes.filter(Boolean).join(" ");
@@ -220,19 +219,10 @@ interface Dot {
 }
 
 const FreelancePlatform: React.FC = () => {
-  const navigate = useNavigate();
+  // navigation handled elsewhere
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
-  const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
-
-  const handleWalletConnect = () => {
-    // Simulate wallet connection
-    setIsWalletConnected(true);
-    // Redirect to profile page
-    setTimeout(() => {
-      navigate('/profile');
-    }, 500);
-  };
+  // Wallet connect is handled in the global header
 
   const dotsRef = useRef<Dot[]>([]);
   const gridRef = useRef<Record<string, number[]>>({});
@@ -426,10 +416,7 @@ const FreelancePlatform: React.FC = () => {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: contentDelay + itemDelayIncrement * 2 } }
   };
-  const ctaVariants: Variants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: contentDelay + itemDelayIncrement * 3 } }
-  };
+  // CTA removed
   const featuresVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.5, delay: contentDelay + itemDelayIncrement * 4 } }
@@ -442,34 +429,7 @@ const FreelancePlatform: React.FC = () => {
         background: 'linear-gradient(to bottom, transparent 0%, #111111 90%), radial-gradient(ellipse at center, transparent 40%, #111111 95%)'
       }}></div>
 
-      {/* Header */}
-      <motion.header
-        className="fixed top-0 left-0 right-0 z-50 bg-[#111111]/95 border-b border-gray-700/50 backdrop-blur-sm"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-2">
-              <Briefcase className="text-orange-500 w-7 h-7" />
-              <span className="text-xl font-bold text-white">freelanceai</span>
-            </div>
-
-            {/* Wallet Connect Button */}
-            <motion.button
-              onClick={handleWalletConnect}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-orange-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-lg"
-            >
-              <Wallet className="w-5 h-5" />
-              <span>{isWalletConnected ? 'Connected' : 'Connect Wallet'}</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
+      {/* Header removed on landing; app-level header is used elsewhere */}
 
       <main className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-20 pb-0 relative z-10">
         <motion.div
@@ -518,22 +478,7 @@ const FreelancePlatform: React.FC = () => {
           A decentralized freelance platform powered by AI agents. Post tasks, find verified freelancers, and get paid securely with Web3 technology.
         </motion.p>
 
-        <motion.div
-          variants={ctaVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex items-center justify-center mb-12"
-        >
-          <motion.button
-            onClick={handleWalletConnect}
-            className="bg-orange-500 text-white px-10 py-4 rounded-md text-lg font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-lg hover:shadow-xl"
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
-          >
-            Get Started
-          </motion.button>
-        </motion.div>
+        {/* CTA removed; wallet connect is available in header on other pages */}
 
         <motion.div
           variants={featuresVariants}

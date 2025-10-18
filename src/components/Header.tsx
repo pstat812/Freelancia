@@ -1,16 +1,18 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Briefcase, User, Folder } from 'lucide-react';
+import { Briefcase, User, Folder, Wallet } from 'lucide-react';
 
 interface HeaderProps {
   userRole: 'publisher' | 'freelancer';
-  onToggleRole: () => void;
+  onSelectRole: (role: 'publisher' | 'freelancer') => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userRole, onToggleRole }) => {
+const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
   const location = useLocation();
   const isPublisher = userRole === 'publisher';
+  const navigate = useNavigate();
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
 
   return (
     <motion.header
@@ -21,11 +23,11 @@ const Header: React.FC<HeaderProps> = ({ userRole, onToggleRole }) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+          {/* Logo (no navigation) */}
+          <div className="flex items-center space-x-2 select-none">
             <Briefcase className="text-orange-500 w-7 h-7" />
             <span className="text-xl font-bold text-white">freelanceai</span>
-          </Link>
+          </div>
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
@@ -65,15 +67,46 @@ const Header: React.FC<HeaderProps> = ({ userRole, onToggleRole }) => {
                 >
                   Your Tasks
                 </Link>
+                <Link
+                  to="/profile"
+                  className={`text-sm font-medium transition-colors ${
+                    location.pathname === '/profile'
+                      ? 'text-orange-500'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  Profile
+                </Link>
               </>
             )}
           </nav>
 
           {/* Role Toggle */}
           <div className="flex items-center space-x-4">
+            {/* Connect Wallet */}
+            <motion.button
+              onClick={() => {
+                if (!isWalletConnected) {
+                  setIsWalletConnected(true);
+                }
+                navigate('/profile');
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-orange-500 text-white px-3 sm:px-4 py-1.5 rounded-md text-sm font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-lg"
+            >
+              <Wallet className="w-4 h-4" />
+              <span className="hidden sm:inline">{isWalletConnected ? 'Connected' : 'Connect Wallet'}</span>
+              <span className="sm:hidden">{isWalletConnected ? 'Connected' : 'Connect'}</span>
+            </motion.button>
             <div className="flex items-center bg-gray-800/50 rounded-lg p-1 border border-gray-700/50">
               <button
-                onClick={onToggleRole}
+                onClick={() => {
+                  if (!isPublisher) {
+                    onSelectRole('publisher');
+                  }
+                  navigate('/publisher/tasks');
+                }}
                 className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   isPublisher
                     ? 'bg-orange-500 text-white'
@@ -81,10 +114,15 @@ const Header: React.FC<HeaderProps> = ({ userRole, onToggleRole }) => {
                 }`}
               >
                 <Folder className="w-4 h-4" />
-                <span>Publisher</span>
+                <span>Client</span>
               </button>
               <button
-                onClick={onToggleRole}
+                onClick={() => {
+                  if (isPublisher) {
+                    onSelectRole('freelancer');
+                  }
+                  navigate('/freelancer/browse');
+                }}
                 className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   !isPublisher
                     ? 'bg-orange-500 text-white'

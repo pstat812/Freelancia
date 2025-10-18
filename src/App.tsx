@@ -15,8 +15,8 @@ import './App.css';
 function App() {
   const [userRole, setUserRole] = useState<'publisher' | 'freelancer'>('publisher');
 
-  const toggleRole = () => {
-    setUserRole(prev => prev === 'publisher' ? 'freelancer' : 'publisher');
+  const selectRole = (role: 'publisher' | 'freelancer') => {
+    setUserRole(role);
   };
 
   return (
@@ -30,7 +30,7 @@ function App() {
           path="/profile"
           element={
             <>
-              <Header userRole={userRole} onToggleRole={toggleRole} />
+              <Header userRole={userRole} onSelectRole={selectRole} />
               <Profile />
             </>
           }
@@ -41,7 +41,7 @@ function App() {
           path="/publisher/*"
           element={
             <>
-              <Header userRole={userRole} onToggleRole={toggleRole} />
+              <Header userRole={userRole} onSelectRole={selectRole} />
               <Routes>
                 <Route path="tasks" element={<PublisherYourTasks />} />
                 <Route path="task/:id" element={<PublisherTaskDetail />} />
@@ -57,7 +57,7 @@ function App() {
           path="/freelancer/*"
           element={
             <>
-              <Header userRole={userRole} onToggleRole={toggleRole} />
+              <Header userRole={userRole} onSelectRole={selectRole} />
               <Routes>
                 <Route path="browse" element={<FreelancerBrowseTasks />} />
                 <Route path="task/:id" element={<FreelancerTaskDescription />} />
