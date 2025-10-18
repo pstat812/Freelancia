@@ -245,14 +245,7 @@ const AddTask: React.FC = () => {
             </button>
           </div>
 
-          {/* Payment Info */}
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-orange-500 mb-2">Payment Information</h3>
-            <p className="text-sm text-gray-300">
-              Funds will be held in escrow and released automatically upon AI verification of task completion.
-              Payment method: PYUSD (PayPal USD)
-            </p>
-          </div>
+          {/* Payment Info removed as requested */}
 
           {/* Submit Button */}
           <div className="flex items-center justify-end space-x-4 pt-4">

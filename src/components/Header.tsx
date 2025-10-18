@@ -23,11 +23,11 @@ const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo (no navigation) */}
-          <div className="flex items-center space-x-2 select-none">
+          {/* Logo → navigate to landing */}
+          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Briefcase className="text-orange-500 w-7 h-7" />
             <span className="text-xl font-bold text-white">freelanceai</span>
-          </div>
+          </Link>
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
