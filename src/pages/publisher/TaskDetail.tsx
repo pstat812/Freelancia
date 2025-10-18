@@ -97,7 +97,7 @@ const TaskDetail: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Applications */}
+        {/* Assigned Freelancer */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -105,56 +105,33 @@ const TaskDetail: React.FC = () => {
           className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8 mb-6"
         >
           <h2 className="text-2xl font-bold text-white mb-6">
-            Applications ({task.applications.length})
+            Assigned Freelancer
           </h2>
           {task.applications.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No applications yet</p>
+            <p className="text-gray-400 text-center py-8">No freelancer assigned</p>
           ) : (
-            <div className="space-y-4">
-              {task.applications.map((application) => (
+            (() => {
+              const application = task.applications[0];
+              return (
                 <div
                   key={application.id}
                   className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-6"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-orange-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-white">{application.freelancerName}</h3>
-                        <p className="text-sm text-gray-400">
-                          Applied {new Date(application.appliedAt).toLocaleDateString()}
-                        </p>
-                      </div>
+                  <div className="flex items-start mb-4">
+                    <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center mr-3">
+                      <User className="w-5 h-5 text-orange-500" />
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(application.status)}`}>
-                      {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                    </span>
+                    <div>
+                      <h3 className="font-semibold text-white">{application.freelancerName}</h3>
+                    </div>
                   </div>
-
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-white mb-2">Experience</h4>
+                  <div>
+                    <h4 className="text-sm font-semibold text-white mb-2">Description</h4>
                     <p className="text-sm text-gray-300">{application.experience}</p>
                   </div>
-
-                  {application.aiAssessment && (
-                    <div className="bg-gray-800/50 border border-gray-700/30 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold text-white flex items-center">
-                          <CheckCircle className="w-4 h-4 text-green-400 mr-2" />
-                          AI Assessment
-                        </h4>
-                        <span className="text-sm font-semibold text-green-400">
-                          Score: {application.aiAssessment.score}/100
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-300">{application.aiAssessment.feedback}</p>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </motion.div>
 

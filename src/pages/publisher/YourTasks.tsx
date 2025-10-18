@@ -5,18 +5,18 @@ import { Plus, Clock, DollarSign, Users, CheckCircle } from 'lucide-react';
 import { getTasksByPublisher, currentUser, type TaskStatus } from '../../data/mockData';
 
 const YourTasks: React.FC = () => {
-  const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'completed' | 'expired'>('all');
   const userTasks = getTasksByPublisher(currentUser.id);
 
-  const filteredTasks = filter === 'all' 
-    ? userTasks 
-    : userTasks.filter(task => task.status === filter);
+  const filteredTasks = userTasks.filter(task => {
+    if (filter === 'all') return true;
+    if (filter === 'expired') return new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
+    return task.status === filter;
+  });
 
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
       case 'open': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
-      case 'in-progress': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      case 'submitted': return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
       case 'completed': return 'text-green-400 bg-green-400/10 border-green-400/20';
       case 'cancelled': return 'text-red-400 bg-red-400/10 border-red-400/20';
       default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
@@ -56,10 +56,10 @@ const YourTasks: React.FC = () => {
 
           {/* Filter Tabs */}
           <div className="flex flex-wrap gap-2">
-            {['all', 'open', 'in-progress', 'submitted', 'completed'].map((status) => (
+            {['all', 'open', 'completed', 'expired'].map((status) => (
               <button
                 key={status}
-                onClick={() => setFilter(status as TaskStatus | 'all')}
+                onClick={() => setFilter(status as 'all' | 'open' | 'completed' | 'expired')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   filter === status
                     ? 'bg-orange-500 text-white'
