@@ -1,12 +1,26 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, DollarSign, Clock, Tag, CheckCircle, XCircle, AlertCircle, User, FileText, Image as ImageIcon, Code, FileCode } from 'lucide-react';
-import { getTaskById } from '../../data/mockData';
+import { getTaskById, deleteTaskById } from '../../data/mockData';
 
 const TaskDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const task = getTaskById(id || '');
+  const navigate = useNavigate();
+
+  const handleDeleteTask = () => {
+    if (!task) return;
+    const confirmed = window.confirm('Delete this task? This action cannot be undone.');
+    if (!confirmed) return;
+
+    const success = deleteTaskById(task.id);
+    if (success) {
+      navigate('/publisher/tasks');
+    } else {
+      alert('Failed to delete task.');
+    }
+  };
 
   if (!task) {
     return (
@@ -80,6 +94,18 @@ const TaskDetail: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {task.status === 'open' && (
+              <motion.button
+                onClick={handleDeleteTask}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="bg-red-500/10 border border-red-500/40 text-red-400 px-4 py-2 rounded-md text-sm font-semibold hover:bg-red-500/20 transition-colors flex items-center space-x-2"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Delete Task</span>
+              </motion.button>
+            )}
           </div>
 
           <div className="mb-6">

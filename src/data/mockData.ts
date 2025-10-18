@@ -472,3 +472,12 @@ export const getTasksByFreelancer = (freelancerId: string): Task[] => {
   );
 };
 
+export const deleteTaskById = (id: string): boolean => {
+  const index = mockTasks.findIndex(task => task.id === id);
+  if (index !== -1) {
+    mockTasks.splice(index, 1);
+    return true;
+  }
+  return false;
+};
+
