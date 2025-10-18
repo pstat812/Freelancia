@@ -38,6 +38,12 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const checkConnection = async () => {
     try {
+      // Check if user manually disconnected
+      const manuallyDisconnected = localStorage.getItem('wallet_manually_disconnected');
+      if (manuallyDisconnected === 'true') {
+        return; // Don't auto-connect if user manually disconnected
+      }
+
       const account = await walletService.getAccount();
       if (account) {
         setWalletAddress(account);

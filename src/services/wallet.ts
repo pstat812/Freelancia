@@ -20,7 +20,13 @@ export class WalletService {
     try {
       this.provider = new BrowserProvider(window.ethereum);
       
-      // Request account access
+      // Force fresh permission request to show MetaMask account selection popup
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }]
+      });
+      
+      // Get accounts after permission granted
       const accounts = await window.ethereum.request({ 
         method: 'eth_requestAccounts' 
       });
@@ -34,6 +40,9 @@ export class WalletService {
 
       // Check if on correct network
       await this.checkNetwork();
+
+      // Clear manual disconnect flag
+      localStorage.removeItem('wallet_manually_disconnected');
 
       return address;
     } catch (error: any) {
@@ -103,6 +112,8 @@ export class WalletService {
   disconnect(): void {
     this.provider = null;
     this.signer = null;
+    // Set flag in localStorage to prevent auto-reconnect
+    localStorage.setItem('wallet_manually_disconnected', 'true');
   }
 
   // Get wallet balance (ETH)

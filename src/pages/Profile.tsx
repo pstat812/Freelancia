@@ -149,21 +149,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Show wallet connection prompt if not connected
-  if (!walletAddress) {
-    return (
-      <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12">
-            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Wallet Not Connected</h2>
-            <p className="text-gray-400 mb-6">Please connect your wallet to view and edit your profile.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Show loading state
   if (isLoading) {
     return (
