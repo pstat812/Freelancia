@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
+import Profile from './pages/Profile';
 import Header from './components/Header';
 import PublisherYourTasks from './pages/publisher/YourTasks';
 import PublisherTaskDetail from './pages/publisher/TaskDetail';
@@ -23,6 +24,17 @@ function App() {
       <Routes>
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
+
+        {/* Profile Page */}
+        <Route
+          path="/profile"
+          element={
+            <>
+              <Header userRole={userRole} onToggleRole={toggleRole} />
+              <Profile />
+            </>
+          }
+        />
 
         {/* Publisher Routes */}
         <Route

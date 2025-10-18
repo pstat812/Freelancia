@@ -24,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ userRole, onToggleRole }) => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Briefcase className="text-orange-500 w-7 h-7" />
-            <span className="text-xl font-bold text-white">FreelanceAI</span>
+            <span className="text-xl font-bold text-white">freelanceai</span>
           </Link>
 
           {/* Navigation */}
@@ -41,16 +41,7 @@ const Header: React.FC<HeaderProps> = ({ userRole, onToggleRole }) => {
                 >
                   Your Tasks
                 </Link>
-                <Link
-                  to="/publisher/add-task"
-                  className={`text-sm font-medium transition-colors ${
-                    location.pathname.includes('/publisher/add-task')
-                      ? 'text-orange-500'
-                      : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  Post Task
-                </Link>
+               
               </>
             ) : (
               <>

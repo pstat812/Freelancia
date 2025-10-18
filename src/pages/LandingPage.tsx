@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, useMemo, type ReactNode, type MouseEvent as ReactMouseEvent, type SVGProps } from 'react';
-import { motion, AnimatePresence, useScroll, useMotionValueEvent, type Transition, type VariantLabels, type Target, type TargetAndTransition, type Variants } from 'framer-motion';
-import { Briefcase, Users, CheckCircle, TrendingUp, Shield, Zap, Facebook, Twitter, Linkedin, Github } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { motion, AnimatePresence, type Transition, type VariantLabels, type Target, type TargetAndTransition, type Variants } from 'framer-motion';
+import { Briefcase, CheckCircle, TrendingUp, Shield, Zap, Twitter, Linkedin, Github, Wallet } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 function cn(...classes: (string | undefined | null | boolean)[]): string {
   return classes.filter(Boolean).join(" ");
@@ -219,15 +220,19 @@ interface Dot {
 }
 
 const FreelancePlatform: React.FC = () => {
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
 
-  const { scrollY } = useScroll();
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    setIsScrolled(latest > 10);
-  });
+  const handleWalletConnect = () => {
+    // Simulate wallet connection
+    setIsWalletConnected(true);
+    // Redirect to profile page
+    setTimeout(() => {
+      navigate('/profile');
+    }, 500);
+  };
 
   const dotsRef = useRef<Dot[]>([]);
   const gridRef = useRef<Record<string, number[]>>({});
@@ -406,36 +411,6 @@ const FreelancePlatform: React.FC = () => {
     };
   }, [handleResize, handleMouseMove, animateDots]);
 
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isMobileMenuOpen]);
-
-  const headerVariants: Variants = {
-    top: {
-      backgroundColor: "rgba(17, 17, 17, 0.8)",
-      borderBottomColor: "rgba(55, 65, 81, 0.5)",
-      position: 'fixed',
-      boxShadow: 'none',
-    },
-    scrolled: {
-      backgroundColor: "rgba(17, 17, 17, 0.95)",
-      borderBottomColor: "rgba(75, 85, 99, 0.7)",
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-      position: 'fixed'
-    }
-  };
-
-  const mobileMenuVariants: Variants = {
-    hidden: { opacity: 0, y: -20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.15, ease: "easeIn" } }
-  };
-
   const contentDelay = 0.3;
   const itemDelayIncrement = 0.1;
 
@@ -467,8 +442,36 @@ const FreelancePlatform: React.FC = () => {
         background: 'linear-gradient(to bottom, transparent 0%, #111111 90%), radial-gradient(ellipse at center, transparent 40%, #111111 95%)'
       }}></div>
 
+      {/* Header */}
+      <motion.header
+        className="fixed top-0 left-0 right-0 z-50 bg-[#111111]/95 border-b border-gray-700/50 backdrop-blur-sm"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center space-x-2">
+              <Briefcase className="text-orange-500 w-7 h-7" />
+              <span className="text-xl font-bold text-white">freelanceai</span>
+            </div>
 
-      <main className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-0 pb-0 relative z-10">
+            {/* Wallet Connect Button */}
+            <motion.button
+              onClick={handleWalletConnect}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-orange-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-lg"
+            >
+              <Wallet className="w-5 h-5" />
+              <span>{isWalletConnected ? 'Connected' : 'Connect Wallet'}</span>
+            </motion.button>
+          </div>
+        </div>
+      </motion.header>
+
+      <main className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-20 pb-0 relative z-10">
         <motion.div
           variants={bannerVariants}
           initial="hidden"
@@ -519,26 +522,17 @@ const FreelancePlatform: React.FC = () => {
           variants={ctaVariants}
           initial="hidden"
           animate="visible"
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+          className="flex items-center justify-center mb-12"
         >
-          <motion.a
-            href="#"
-            className="bg-orange-500 text-white px-8 py-3 rounded-md text-base font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-lg hover:shadow-xl"
+          <motion.button
+            onClick={handleWalletConnect}
+            className="bg-orange-500 text-white px-10 py-4 rounded-md text-lg font-semibold hover:bg-orange-600 transition-colors duration-200 shadow-lg hover:shadow-xl"
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 15 }}
           >
-            Post a Task
-          </motion.a>
-          <motion.a
-            href="#"
-            className="bg-gray-800 text-white px-8 py-3 rounded-md text-base font-semibold hover:bg-gray-700 transition-colors duration-200 border border-gray-700"
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
-          >
-            Find Work
-          </motion.a>
+            Get Started
+          </motion.button>
         </motion.div>
 
         <motion.div
@@ -572,10 +566,10 @@ const FreelancePlatform: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center">
               <Briefcase className="text-orange-500 w-6 h-6" />
-              <span className="text-lg font-bold text-white ml-2">FreelanceAI</span>
+              <span className="text-lg font-bold text-white ml-2">freelanceai</span>
             </div>
             <p className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} Tat. All rights reserved.
+              © {new Date().getFullYear()} freelanceai. All rights reserved.
             </p>
           </div>
 
