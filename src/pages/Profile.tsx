@@ -18,6 +18,7 @@ interface Education {
 }
 
 const Profile: React.FC = () => {
+  const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState<string[]>(['']);
   const [workExperience, setWorkExperience] = useState<WorkExperience[]>([
@@ -143,6 +144,20 @@ const Profile: React.FC = () => {
           <div className="flex items-center space-x-3 mb-4">
             <User className="w-6 h-6 text-orange-500" />
             <h2 className="text-2xl font-bold text-white">About Me</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-semibold text-white mb-2">Name *</label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+                required
+              />
+            </div>
           </div>
           <textarea
             value={description}
