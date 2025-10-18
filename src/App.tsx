@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { WalletProvider } from './contexts/WalletContext';
 import LandingPage from './pages/LandingPage';
 import Profile from './pages/Profile';
 import Header from './components/Header';
@@ -20,10 +21,22 @@ function App() {
   };
 
   return (
-    <Router>
+    <WalletProvider>
+      <Router>
       <Routes>
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
+
+        {/* Dashboard redirect by role */}
+        <Route
+          path="/dashboard"
+          element={
+            <Navigate
+              to={userRole === 'publisher' ? '/publisher/tasks' : '/freelancer/browse'}
+              replace
+            />
+          }
+        />
 
         {/* Profile Page */}
         <Route
@@ -81,6 +94,7 @@ function App() {
         />
       </Routes>
     </Router>
+    </WalletProvider>
   );
 }
 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, User, Folder, Wallet } from 'lucide-react';
+import { useWallet } from '../contexts/WalletContext';
 
 interface HeaderProps {
   userRole: 'publisher' | 'freelancer';
@@ -12,7 +13,14 @@ const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
   const location = useLocation();
   const isPublisher = userRole === 'publisher';
   const navigate = useNavigate();
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const { walletAddress, isConnecting, connectWallet } = useWallet();
+
+  const handleWalletClick = async () => {
+    if (!walletAddress) {
+      await connectWallet();
+    }
+    navigate('/profile');
+  };
 
   return (
     <motion.header
@@ -85,19 +93,19 @@ const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
           <div className="flex items-center space-x-4">
             {/* Connect Wallet */}
             <motion.button
-              onClick={() => {
-                if (!isWalletConnected) {
-                  setIsWalletConnected(true);
-                }
-                navigate('/profile');
-              }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-orange-500 text-white px-3 sm:px-4 py-1.5 rounded-md text-sm font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-lg"
+              onClick={handleWalletClick}
+              disabled={isConnecting}
+              whileHover={{ scale: isConnecting ? 1 : 1.05 }}
+              whileTap={{ scale: isConnecting ? 1 : 0.95 }}
+              className="bg-orange-500 text-white px-3 sm:px-4 py-1.5 rounded-md text-sm font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <Wallet className="w-4 h-4" />
-              <span className="hidden sm:inline">{isWalletConnected ? 'Connected' : 'Connect Wallet'}</span>
-              <span className="sm:hidden">{isWalletConnected ? 'Connected' : 'Connect'}</span>
+              <span className="hidden sm:inline">
+                {isConnecting ? 'Connecting...' : walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connect Wallet'}
+              </span>
+              <span className="sm:hidden">
+                {isConnecting ? 'Connecting...' : walletAddress ? `${walletAddress.slice(0, 4)}...` : 'Connect'}
+              </span>
             </motion.button>
             <div className="flex items-center bg-gray-800/50 rounded-lg p-1 border border-gray-700/50">
               <button
