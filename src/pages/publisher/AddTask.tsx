@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, DollarSign, Calendar, Tag, FileText, CheckCircle } from 'lucide-react';
 import { useWallet } from '../../contexts/WalletContext';
 import { taskService, type TaskCategory } from '../../services/taskService';
+import { taskEscrowService } from '../../services/taskEscrow';
 
 const AddTask: React.FC = () => {
   const navigate = useNavigate();
@@ -65,29 +66,53 @@ const AddTask: React.FC = () => {
     setError(null);
 
     try {
-      // Filter out empty requirements
+      const budget = parseFloat(formData.budget);
+      const deadline = new Date(formData.deadline);
       const cleanedRequirements = formData.requirements.filter(req => req.trim() !== '');
-      
-      // Create task in database
-      await taskService.createTask(walletAddress, {
+     // Create task in Supabase database to get task ID
+      const createdTask = await taskService.createTask(walletAddress, {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        budget: parseFloat(formData.budget),
-        deadline: new Date(formData.deadline).toISOString(),
+        budget,
+        deadline: deadline.toISOString(),
         requirements: cleanedRequirements,
       });
+
+      //Check PYUSD balance
+      const balance = await taskEscrowService.getPyusdBalance(walletAddress);
+      console.log('PYUSD balance:', balance);
+
+      if (parseFloat(balance) < budget) {
+        throw new Error(`Insufficient PYUSD balance. You have ${balance} PYUSD, but need ${budget} PYUSD`);
+      }
+
+      // Check and request approva
+      const allowance = await taskEscrowService.checkAllowance(walletAddress);
+      console.log('Current allowance:', allowance);
+
+      if (parseFloat(allowance) < budget) {
+        await taskEscrowService.approvePyusd(budget);
+      }
+
+      //Deposit PYUSD to smart contract
+      const txHash = await taskEscrowService.depositForTask(
+        createdTask.id,
+        budget,
+        deadline
+      );
+
+      console.log('PYUSD deposited, Transaction:', txHash);
 
       setIsSubmitting(false);
       setShowSuccess(true);
 
-      // Redirect after showing success message
       setTimeout(() => {
         navigate('/publisher/tasks');
-      }, 2000);
+      }, 3000);
     } catch (err: any) {
-      console.error('Error creating task:', err);
-      setError(err.message || 'Failed to create task. Please try again.');
+      console.error('Error creating task with deposit:', err);
+      setError(err.message || 'Failed to create task and deposit PYUSD. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -103,7 +128,8 @@ const AddTask: React.FC = () => {
           <div className="bg-gray-800/50 border border-green-500/50 rounded-xl p-12 max-w-md">
             <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">Task Posted Successfully!</h2>
-            <p className="text-gray-400">Redirecting to your tasks...</p>
+            <p className="text-gray-400 mb-2">PYUSD deposited to smart contract</p>
+            <p className="text-gray-500 text-sm">Redirecting to your tasks...</p>
           </div>
         </motion.div>
       </div>
