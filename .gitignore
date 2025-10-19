@@ -24,7 +24,10 @@ dist-ssr
 *.sw?
 
 node_modules/
-
 .cursor/
+artifacts/
+cache/
+types/
+
 .gitignore
 .env
