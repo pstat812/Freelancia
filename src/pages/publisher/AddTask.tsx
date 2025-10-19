@@ -69,40 +69,35 @@ const AddTask: React.FC = () => {
       const budget = parseFloat(formData.budget);
       const deadline = new Date(formData.deadline);
       const cleanedRequirements = formData.requirements.filter(req => req.trim() !== '');
-     // Create task in Supabase database to get task ID
-      const createdTask = await taskService.createTask(walletAddress, {
+
+      const balance = await taskEscrowService.getPyusdBalance(walletAddress);
+
+      if (parseFloat(balance) < budget) {
+        throw new Error(`Insufficient PYUSD balance. You have ${balance} PYUSD, but need ${budget} PYUSD`);
+      }
+
+      const allowance = await taskEscrowService.checkAllowance(walletAddress);
+
+      if (parseFloat(allowance) < budget) {
+        await taskEscrowService.approvePyusd(budget);
+      }
+
+      const taskId = crypto.randomUUID();
+
+      await taskEscrowService.depositForTask(
+        taskId,
+        budget,
+        deadline
+      );
+
+      await taskService.createTask(walletAddress, {
         title: formData.title,
         description: formData.description,
         category: formData.category,
         budget,
         deadline: deadline.toISOString(),
         requirements: cleanedRequirements,
-      });
-
-      //Check PYUSD balance
-      const balance = await taskEscrowService.getPyusdBalance(walletAddress);
-      console.log('PYUSD balance:', balance);
-
-      if (parseFloat(balance) < budget) {
-        throw new Error(`Insufficient PYUSD balance. You have ${balance} PYUSD, but need ${budget} PYUSD`);
-      }
-
-      // Check and request approva
-      const allowance = await taskEscrowService.checkAllowance(walletAddress);
-      console.log('Current allowance:', allowance);
-
-      if (parseFloat(allowance) < budget) {
-        await taskEscrowService.approvePyusd(budget);
-      }
-
-      //Deposit PYUSD to smart contract
-      const txHash = await taskEscrowService.depositForTask(
-        createdTask.id,
-        budget,
-        deadline
-      );
-
-      console.log('PYUSD deposited, Transaction:', txHash);
+      }, taskId);
 
       setIsSubmitting(false);
       setShowSuccess(true);
@@ -111,6 +106,11 @@ const AddTask: React.FC = () => {
         navigate('/publisher/tasks');
       }, 3000);
     } catch (err: any) {
+      if (err.code === 4001 || err.code === 'ACTION_REJECTED' || err.message?.includes('user rejected') || err.message?.includes('User denied')) {
+        setIsSubmitting(false);
+        return;
+      }
+      
       console.error('Error creating task with deposit:', err);
       setError(err.message || 'Failed to create task and deposit PYUSD. Please try again.');
       setIsSubmitting(false);

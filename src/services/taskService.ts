@@ -28,23 +28,26 @@ export interface CreateTaskData {
 }
 
 export class TaskService {
-  // Create a new task
-  async createTask(clientWallet: string, taskData: CreateTaskData): Promise<Task> {
+  async createTask(clientWallet: string, taskData: CreateTaskData, taskId?: string): Promise<Task> {
+    const taskRecord: any = {
+      title: taskData.title,
+      description: taskData.description,
+      category: taskData.category,
+      budget: taskData.budget,
+      deadline: taskData.deadline,
+      requirements: taskData.requirements,
+      status: 'open',
+      client_wallet: clientWallet,
+      freelancer_wallet: null,
+    };
+
+    if (taskId) {
+      taskRecord.id = taskId;
+    }
+
     const { data, error } = await supabase
       .from('tasks')
-      .insert([
-        {
-          title: taskData.title,
-          description: taskData.description,
-          category: taskData.category,
-          budget: taskData.budget,
-          deadline: taskData.deadline,
-          requirements: taskData.requirements,
-          status: 'open',
-          client_wallet: clientWallet,
-          freelancer_wallet: null,
-        },
-      ])
+      .insert([taskRecord])
       .select()
       .single();
 
