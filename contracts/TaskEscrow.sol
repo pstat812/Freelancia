@@ -17,9 +17,11 @@ contract TaskEscrow is ReentrancyGuard {
     }
     
     mapping(string => Task) public tasks;
+    mapping(string => address) public taskFreelancers;
     
     event TaskCreated(string indexed taskId, address indexed client, uint256 amount);
     event FundsDeposited(string indexed taskId, address indexed client, uint256 amount);
+    event FundsReleased(string indexed taskId, address indexed freelancer, uint256 amount);
     
     constructor(address _pyusdToken) {
         require(_pyusdToken != address(0), "Invalid PYUSD token address");
@@ -69,6 +71,34 @@ contract TaskEscrow is ReentrancyGuard {
     
     function getContractBalance() external view returns (uint256) {
         return pyusdToken.balanceOf(address(this));
+    }
+    
+    function assignFreelancer(string memory taskId, address freelancer) external {
+        require(tasks[taskId].client == msg.sender, "Only client can assign freelancer");
+        require(tasks[taskId].fundsDeposited, "Funds not deposited");
+        require(freelancer != address(0), "Invalid freelancer address");
+        
+        taskFreelancers[taskId] = freelancer;
+    }
+    
+    function releasePayment(string memory taskId) external nonReentrant {
+        Task memory task = tasks[taskId];
+        require(task.fundsDeposited, "No funds deposited for this task");
+        require(task.client == msg.sender, "Only client can release payment");
+        
+        address freelancer = taskFreelancers[taskId];
+        require(freelancer != address(0), "No freelancer assigned");
+        
+        uint256 amount = task.amount;
+        
+        tasks[taskId].fundsDeposited = false;
+        
+        require(
+            pyusdToken.transfer(freelancer, amount),
+            "PYUSD transfer failed"
+        );
+        
+        emit FundsReleased(taskId, freelancer, amount);
     }
 }
 
