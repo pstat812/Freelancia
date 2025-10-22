@@ -20,3 +20,5 @@ node_modules/
 .cursor
 .gitignore
 .env
+sql
+__pycache__/

@@ -5,7 +5,11 @@ const TASK_ESCROW_ABI = [
   "function getTask(string taskId) external view returns (tuple(string taskId, address client, uint256 amount, uint256 deadline, bool fundsDeposited, uint256 createdAt))",
   "function hasFundsDeposited(string taskId) external view returns (bool)",
   "function getContractBalance() external view returns (uint256)",
-  "function pyusdToken() external view returns (address)"
+  "function pyusdToken() external view returns (address)",
+  "function assignFreelancer(string taskId, address freelancer) external",
+  "function releasePayment(string taskId) external",
+  "function taskFreelancers(string taskId) external view returns (address)",
+  "event FundsReleased(string indexed taskId, address indexed freelancer, uint256 amount)"
 ];
 
 // ERC20 ABI for PYUSD token (approval)
@@ -143,6 +147,43 @@ export class TaskEscrowService {
     
     const balance = await this.taskEscrowContract!.getContractBalance();
     return formatUnits(balance, 6);
+  }
+
+  async assignFreelancer(taskId: string, freelancerAddress: string): Promise<string> {
+    if (!this.taskEscrowContract) await this.initialize();
+
+    console.log('Assigning freelancer to task...', {
+      taskId,
+      freelancerAddress
+    });
+
+    const tx = await this.taskEscrowContract!.assignFreelancer(taskId, freelancerAddress);
+    console.log('Assign transaction sent:', tx.hash);
+    
+    await tx.wait();
+    console.log('Freelancer assigned');
+
+    return tx.hash;
+  }
+
+  async releasePayment(taskId: string): Promise<string> {
+    if (!this.taskEscrowContract) await this.initialize();
+
+    console.log('Releasing payment for task...', taskId);
+
+    const tx = await this.taskEscrowContract!.releasePayment(taskId);
+    console.log('Release payment transaction sent:', tx.hash);
+    
+    await tx.wait();
+    console.log('Payment released');
+
+    return tx.hash;
+  }
+
+  async getTaskFreelancer(taskId: string): Promise<string> {
+    if (!this.taskEscrowContract) await this.initialize();
+    
+    return await this.taskEscrowContract!.taskFreelancers(taskId);
   }
 }
 
