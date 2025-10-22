@@ -52,6 +52,64 @@ def health():
         }
     })
 
+@app.route('/evaluate-freelancer', methods=['POST'])
+def evaluate_freelancer():
+    """Endpoint to trigger evaluation"""
+    try:
+        data = request.json
+        task_id = data.get('task_id')
+        profile = data.get('profile')
+        job_requirements = data.get('job_requirements')
+        
+        if not all([task_id, profile, job_requirements]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        interaction_id = str(uuid.uuid4())
+        
+        trigger_evaluation(
+            interaction_id=interaction_id,
+            job_title=job_requirements.get('title', 'Unknown position'),
+            job_description=job_requirements.get('description', ''),
+            requirements=job_requirements.get('requirements', []),
+            profile_data=profile,
+            freelancer_address=str(freelancer_agent.address)
+        )
+        
+        return jsonify({
+            'interaction_id': interaction_id,
+            'status': 'processing',
+            'message': 'Evaluation initiated'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/reasoning-status/<interaction_id>', methods=['GET'])
+def get_reasoning_status(interaction_id):
+    """Get evaluation status from Client Agent's storage"""
+    try:
+        evaluation = get_evaluation_status(interaction_id)
+        
+        if not evaluation:
+            return jsonify({'error': 'Interaction not found'}), 404
+        
+        return jsonify({
+            'status': evaluation.get('status'),
+            'conversation': evaluation.get('conversation', []),
+            'decision': evaluation.get('decision', 'PENDING'),
+            'waiting_for_user': False
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/agent-addresses', methods=['GET'])
+def agent_addresses():
+    return jsonify({
+        'client_agent': str(client_agent.address),
+        'freelancer_agent': str(freelancer_agent.address)
+    })
+
 if __name__ == '__main__':
 
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
