@@ -3,14 +3,19 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, DollarSign, Clock, Tag, CheckCircle } from 'lucide-react';
 import { taskService, type Task } from '../../services/taskService';
+import { useWallet } from '../../contexts/WalletContext';
+import AgentDrawer from '../../components/AgentDrawer';
 
 const TaskDescription: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useWallet();
   const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [interactionId, setInteractionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -35,12 +40,52 @@ const TaskDescription: React.FC = () => {
   };
 
   const handleApply = async () => {
-    // TODO: Implement application logic in next phase
+    if (!user || !task) {
+      alert('Please complete your profile first!');
+      return;
+    }
+
     setIsApplying(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsApplying(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    setIsDrawerOpen(true);
+    
+    try {
+      const response = await fetch('http://localhost:5000/evaluate-freelancer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task_id: task.id,
+          profile: {
+            name: user.name,
+            skills: user.skills,
+            description: user.description,
+            work_experience: user.work_experience,
+            education: user.education
+          },
+          job_requirements: {
+            title: task.title,
+            category: task.category,
+            requirements: task.requirements,
+            description: task.description
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setInteractionId(data.interaction_id);
+      } else {
+        alert('Failed to start evaluation. Please try again.');
+        setIsDrawerOpen(false);
+      }
+    } catch (error) {
+      console.error('Error applying:', error);
+      alert('AI Agent not available. Please try again later.');
+      setIsDrawerOpen(false);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   if (isLoading) {
@@ -195,6 +240,14 @@ const TaskDescription: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <AgentDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        interactionId={interactionId}
+        agentType="client"
+        title="Application Evaluation by Client Agent"
+      />
     </div>
   );
 };
