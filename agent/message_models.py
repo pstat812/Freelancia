@@ -22,11 +22,18 @@ class IntroductionAcknowledgment(Model):
     ready: bool
     interaction_id: str
 
-class ConversationUpdate(Model):
-    """Update conversation state"""
+class ProfileDataMessage(Model):
+    """ profile data"""
+    profile_data: dict
     interaction_id: str
-    sender: str
-    message: str
-    is_thinking: bool
-    timestamp: str
+
+class QuestionMessage(Model):
+    """Client Agent asks question to Freelancer Agent"""
+    question: str
+    interaction_id: str
+
+class QuestionResponse(Model):
+    """Freelancer Agent responds to question"""
+    answer: str
+    interaction_id: str
 
