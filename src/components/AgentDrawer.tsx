@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bot, Loader, CheckCircle, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface ChatMessage {
   id: string;
@@ -16,6 +17,7 @@ interface AgentDrawerProps {
   interactionId: string | null;
   agentType: 'client' | 'freelancer';
   title: string;
+  taskId?: string;
 }
 
 export const AgentDrawer: React.FC<AgentDrawerProps> = ({
@@ -23,11 +25,15 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   onClose,
   interactionId,
   agentType,
-  title
+  title,
+  taskId
 }) => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<string>('processing');
   const [error, setError] = useState<string>('');
+  const [decision, setDecision] = useState<string>('');
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +46,23 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (decision === 'APPROVED' && status === 'completed' && redirectCountdown === null) {
+      setRedirectCountdown(3);
+    }
+  }, [decision, status]);
+
+  useEffect(() => {
+    if (redirectCountdown !== null && redirectCountdown > 0) {
+      const timer = setTimeout(() => {
+        setRedirectCountdown(redirectCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (redirectCountdown === 0) {
+      navigate('/freelancer/your-tasks');
+    }
+  }, [redirectCountdown, navigate]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -49,12 +72,28 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:5000/reasoning-status/${interactionId}`);
+        // Get wallet and task from localStorage
+        const evalData = localStorage.getItem('currentEvaluation');
+        let freelancerWallet = '';
+        let currentTaskId = taskId || '';
+        
+        if (evalData) {
+          const parsed = JSON.parse(evalData);
+          freelancerWallet = parsed.wallet || '';
+          currentTaskId = currentTaskId || parsed.taskId || '';
+        }
+        
+        console.log('[AgentDrawer] Polling with:', { taskId: currentTaskId, wallet: freelancerWallet });
+        
+        const response = await fetch(
+          `http://localhost:5000/reasoning-status/${interactionId}?task_id=${currentTaskId}&freelancer_wallet=${freelancerWallet}`
+        );
         
         if (response.ok) {
           const data = await response.json();
           setMessages(data.conversation || []);
           setStatus(data.status || 'processing');
+          setDecision(data.decision || '');
           
           if (data.status === 'completed' || data.status === 'failed') {
             clearInterval(pollInterval);
@@ -191,6 +230,37 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                   </div>
                 </motion.div>
               ))}
+
+              {decision && status === 'completed' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`border-2 rounded-lg p-6 text-center mt-6 ${
+                    decision === 'APPROVED' 
+                      ? 'bg-green-500/10 border-green-500' 
+                      : 'bg-red-500/10 border-red-500'
+                  }`}>
+                  <div className="flex items-center justify-center mb-3">
+                    {decision === 'APPROVED' ? (
+                      <CheckCircle className="w-12 h-12 text-green-400" />
+                    ) : (
+                      <XCircle className="w-12 h-12 text-red-400" />
+                    )}
+                  </div>
+                  <div className={`text-2xl font-bold ${
+                    decision === 'APPROVED' 
+                      ? 'text-green-400' 
+                      : 'text-red-400'
+                  }`}>
+                    {decision}
+                  </div>
+                  {decision === 'APPROVED' && redirectCountdown !== null && (
+                    <div className="mt-4 text-sm text-gray-400">
+                      Redirecting to Your Tasks in {redirectCountdown}s...
+                    </div>
+                  )}
+                </motion.div>
+              )}
 
               <div ref={messagesEndRef} />
             </div>

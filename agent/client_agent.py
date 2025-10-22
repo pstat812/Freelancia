@@ -290,10 +290,97 @@ async def handle_question_response(ctx: Context, sender: str, msg: QuestionRespo
                 )
             )
         else:
-            # All questions answered
+            # All questions answered - make final decision
+            ctx.logger.info(f"All questions answered for {msg.interaction_id}. Making final decision...")
+            
+            # Show thinking state
+            evaluations[msg.interaction_id]['conversation'].append({
+                'id': str(uuid4()),
+                'sender': 'client_agent',
+                'message': '',
+                'timestamp': datetime.now().isoformat(),
+                'isThinking': True
+            })
+            
+            await asyncio.sleep(1)
+            
+            # Analyze all answers
+            questions = evaluations[msg.interaction_id]['questions']
+            answers = evaluations[msg.interaction_id]['answers']
+            
+            # Build conversation history for analysis
+            qa_history = "\n".join([f"Q: {q}\nA: {a}" for q, a in zip(questions, answers)])
+            
+            # Count positive vs negative answers
+            positive_answers = sum(1 for a in answers if 'yes' in a.lower() and 'no' not in a.lower())
+            negative_answers = sum(1 for a in answers if 'no' in a.lower() or "doesn't" in a.lower() or "don't" in a.lower())
+            
+            ctx.logger.info(f"Positive answers: {positive_answers}/{len(answers)}, Negative: {negative_answers}/{len(answers)}")
+            
+            try:
+                decision_prompt = f"""
+                I asked the Freelancer Agent these questions about the candidate's qualifications:
+                
+                {qa_history}
+                
+                Review each answer carefully. Count how many answers are "Yes" (candidate has the skill) vs "No" (candidate lacks the skill).
+                
+                Based ONLY on the answers above:
+                - If ALL answers are "Yes" (or positive), respond with: "APPROVED"
+                - If ANY answer is "No" (or negative), respond with: "NOT APPROVED"
+                
+                Then explain your decision briefly.
+                """
+                
+                response = asi_client.chat.completions.create(
+                    model="asi1-mini",
+                    messages=[
+                        {"role": "system", "content": "You are evaluating a candidate. Approve ONLY if all answers show the candidate has the required skills. If you see 'Yes' in all answers, approve. If you see any 'No', reject."},
+                        {"role": "user", "content": decision_prompt},
+                    ],
+                    max_tokens=150,
+                )
+                
+                decision_text = str(response.choices[0].message.content)
+                
+                # Simple logic: if all answers are positive, approve
+                if positive_answers == len(answers) and negative_answers == 0:
+                    decision = 'APPROVED'
+                    message = f"Your freelancer fits the task well. All required skills are confirmed."
+                elif 'APPROVED' in decision_text.upper() and 'NOT APPROVED' not in decision_text.upper():
+                    decision = 'APPROVED'
+                    message = f"Your freelancer fits the task well. {decision_text}"
+                else:
+                    decision = 'NOT APPROVED'
+                    missing_skills = [q for q, a in zip(questions, answers) if 'no' in a.lower() or "doesn't" in a.lower() or "don't" in a.lower()]
+                    if missing_skills:
+                        message = f"Sorry, your freelancer doesn't match the job requirement. They don't have the ability for tasks like: {', '.join([q.replace('Do you have experience in ', '').replace('Do you know how to ', '').replace('?', '') for q in missing_skills[:3]])}."
+                    else:
+                        message = f"Sorry, your freelancer doesn't match the job requirement. {decision_text}"
+                
+            except Exception as e:
+                ctx.logger.error(f"Decision error: {e}")
+                # Fallback to simple logic
+                if positive_answers == len(answers) and negative_answers == 0:
+                    decision = 'APPROVED'
+                    message = "Your freelancer fits the task well. All required skills are confirmed."
+                else:
+                    decision = 'NOT APPROVED'
+                    message = "Unable to complete evaluation properly."
+            
+            # Update conversation with decision
+            evaluations[msg.interaction_id]['conversation'][-1] = {
+                'id': str(uuid4()),
+                'sender': 'client_agent',
+                'message': message,
+                'timestamp': datetime.now().isoformat(),
+                'isThinking': False
+            }
+            
             evaluations[msg.interaction_id]['status'] = 'completed'
-            evaluations[msg.interaction_id]['decision'] = 'PENDING'
-            ctx.logger.info(f"All questions answered for {msg.interaction_id}")
+            evaluations[msg.interaction_id]['decision'] = decision
+            
+            ctx.logger.info(f"Final decision: {decision}")
 
 # Include protocol in agent
 client_agent.include(evaluation_protocol)

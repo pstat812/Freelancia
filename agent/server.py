@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import uuid
 from queue import Queue
+from supabase import create_client, Client
 
 # Import agents
 from client_agent import client_agent, get_evaluation_status, trigger_evaluation
@@ -18,6 +19,18 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+supabase_url = os.getenv('SUPABASE_URL') or os.getenv('VITE_SUPABASE_URL')
+supabase_key = os.getenv('SUPABASE_KEY') or os.getenv('VITE_SUPABASE_ANON_KEY')
+
+print(f"\n[Supabase Config]")
+print(f"URL: {supabase_url[:30] + '...' if supabase_url else 'NOT SET'}")
+print(f"Key: {'SET' if supabase_key else 'NOT SET'}\n")
+
+supabase: Client = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
+
+if not supabase:
+    print("[WARNING] Supabase not configured! Database updates will not work.")
 
 # Bureau to run both agents
 bureau = Bureau(port=8000)
@@ -93,10 +106,51 @@ def get_reasoning_status(interaction_id):
         if not evaluation:
             return jsonify({'error': 'Interaction not found'}), 404
         
+        decision = evaluation.get('decision', 'PENDING')
+        status = evaluation.get('status')
+        
+        print(f"\n[Reasoning Status] Decision: {decision}, Status: {status}, DB Updated: {evaluation.get('db_updated')}, Supabase: {supabase is not None}")
+        
+        # If approved and completed, update database
+        if decision == 'APPROVED' and status == 'completed':
+            print(f"[DB Update] Conditions met for update")
+            
+            if not supabase:
+                print(f"[DB Update] ERROR: Supabase not configured!")
+            
+            if not evaluation.get('db_updated'):
+                if supabase:
+                    try:
+                        task_id = request.args.get('task_id')
+                        freelancer_wallet = request.args.get('freelancer_wallet')
+                        
+                        print(f"[DB Update] Attempting: task_id={task_id}, wallet={freelancer_wallet}")
+                        
+                        if task_id and freelancer_wallet:
+                            # Update task with assigned freelancer
+                            result = supabase.table('tasks').update({
+                                'freelancer_wallet': freelancer_wallet,
+                                'status': 'in-progress'
+                            }).eq('id', task_id).execute()
+                            
+                            print(f"[DB Update] ✅ Success: {result.data}")
+                            
+                            evaluation['db_updated'] = True
+                        else:
+                            print(f"[DB Update] ❌ Missing task_id or wallet")
+                    except Exception as e:
+                        print(f"[DB Update] ❌ Error: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"[DB Update] ❌ Supabase not initialized")
+            else:
+                print(f"[DB Update] Already updated, skipping")
+        
         return jsonify({
-            'status': evaluation.get('status'),
+            'status': status,
             'conversation': evaluation.get('conversation', []),
-            'decision': evaluation.get('decision', 'PENDING'),
+            'decision': decision,
             'waiting_for_user': False
         })
         

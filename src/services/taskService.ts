@@ -163,6 +163,7 @@ export class TaskService {
       .from('tasks')
       .select('*')
       .eq('freelancer_wallet', freelancerWallet)
+      .in('status', ['in-progress', 'completed'])
       .order('created_at', { ascending: false });
 
     if (error) {

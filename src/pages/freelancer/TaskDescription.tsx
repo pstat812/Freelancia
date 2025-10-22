@@ -61,7 +61,8 @@ const TaskDescription: React.FC = () => {
             skills: user.skills,
             description: user.description,
             work_experience: user.work_experience,
-            education: user.education
+            education: user.education,
+            wallet: user.wallet_address
           },
           job_requirements: {
             title: task.title,
@@ -75,6 +76,14 @@ const TaskDescription: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setInteractionId(data.interaction_id);
+        
+        // Store wallet and task ID for the drawer
+        if (user.wallet_address) {
+          localStorage.setItem('currentEvaluation', JSON.stringify({
+            wallet: user.wallet_address,
+            taskId: task.id
+          }));
+        }
       } else {
         alert('Failed to start evaluation. Please try again.');
         setIsDrawerOpen(false);
@@ -247,6 +256,7 @@ const TaskDescription: React.FC = () => {
         interactionId={interactionId}
         agentType="client"
         title="Application Evaluation by Client Agent"
+        taskId={task?.id}
       />
     </div>
   );

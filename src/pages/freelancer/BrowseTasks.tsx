@@ -23,12 +23,14 @@ const BrowseTasks: React.FC = () => {
       setError(null);
       const allTasks = await taskService.getOpenTasks();
       
-      // Filter out tasks created by the current user
-      const filteredByUser = walletAddress 
-        ? allTasks.filter(task => task.client_wallet.toLowerCase() !== walletAddress.toLowerCase())
-        : allTasks;
+      // Filter out tasks created by the current user and tasks already assigned to a freelancer
+      const filteredTasks = allTasks.filter(task => {
+        const notOwnTask = !walletAddress || task.client_wallet.toLowerCase() !== walletAddress.toLowerCase();
+        const notAssigned = !task.freelancer_wallet; // Only show tasks without a freelancer
+        return notOwnTask && notAssigned;
+      });
       
-      setTasks(filteredByUser);
+      setTasks(filteredTasks);
     } catch (err: any) {
       console.error('Error loading tasks:', err);
       setError(err.message || 'Failed to load tasks');
