@@ -173,6 +173,21 @@ export class TaskService {
 
     return (data as Task[]) || [];
   }
+
+  async submitWork(taskId: string, submissionData: any): Promise<void> {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ 
+        Submission: submissionData,
+        status: 'completed' 
+      })
+      .eq('id', taskId);
+
+    if (error) {
+      console.error('Error submitting work:', error);
+      throw new Error(`Error submitting work: ${error.message}`);
+    }
+  }
 }
 
 export const taskService = new TaskService();

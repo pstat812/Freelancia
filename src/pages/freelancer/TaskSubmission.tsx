@@ -1,23 +1,49 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Upload, FileText, Image as ImageIcon, Code, FileCode, X, CheckCircle, AlertTriangle } from 'lucide-react';
-import { getTaskById } from '../../data/mockData';
+import { ArrowLeft, Plus, FileText, Image as ImageIcon, Code, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
+import { taskService } from '../../services/taskService';
+import type { Task } from '../../services/taskService';
 
-type FileType = 'image' | 'text' | 'code' | 'pdf' | null;
+type SubmissionField = {
+  id: string;
+  type: 'text' | 'code' | 'image';
+  label: string;
+  content: string;
+};
 
 const TaskSubmission: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const task = getTaskById(id || '');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [description, setDescription] = useState('');
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string>('');
-  const [fileType, setFileType] = useState<FileType>(null);
+  
+  const [task, setTask] = useState<Task | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fields, setFields] = useState<SubmissionField[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    const loadTask = async () => {
+      if (!id) return;
+      try {
+        const taskData = await taskService.getTaskById(id);
+        setTask(taskData);
+      } catch (error) {
+        console.error('Error loading task:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTask();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-300 pt-24 pb-16 px-4 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
 
   if (!task) {
     return (
@@ -32,78 +58,200 @@ const TaskSubmission: React.FC = () => {
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadedFile(file);
-
-    // Determine file type
-    const fileName = file.name.toLowerCase();
-    const fileExtension = fileName.split('.').pop();
-
-    if (file.type.startsWith('image/')) {
-      setFileType('image');
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else if (fileExtension === 'pdf') {
-      setFileType('pdf');
-      setFilePreview(file.name);
-    } else if (['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'cpp', 'c', 'html', 'css', 'json'].includes(fileExtension || '')) {
-      setFileType('code');
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result as string);
-      };
-      reader.readAsText(file);
-    } else if (['txt', 'md'].includes(fileExtension || '')) {
-      setFileType('text');
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result as string);
-      };
-      reader.readAsText(file);
-    } else {
-      setFileType(null);
-      setFilePreview(file.name);
-    }
+  const addField = (type: 'text' | 'code' | 'image') => {
+    const newField: SubmissionField = {
+      id: Date.now().toString(),
+      type,
+      label: '',
+      content: ''
+    };
+    setFields([...fields, newField]);
   };
 
-  const handleRemoveFile = () => {
-    setUploadedFile(null);
-    setFilePreview('');
-    setFileType(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const removeField = (id: string) => {
+    setFields(fields.filter(field => field.id !== id));
+  };
+
+  const updateFieldLabel = (id: string, label: string) => {
+    setFields(fields.map(field => 
+      field.id === id ? { ...field, label } : field
+    ));
+  };
+
+  const updateFieldContent = (id: string, content: string) => {
+    setFields(fields.map(field => 
+      field.id === id ? { ...field, content } : field
+    ));
+  };
+
+  const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateFieldContent(id, reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (fields.length === 0) {
+      alert('Please add at least one submission field');
+      return;
+    }
+
+    if (fields.some(f => !f.label.trim() || !f.content.trim())) {
+      alert('Please fill in all field labels and content');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const submissionData = {
+        fields: fields.map(f => ({
+          type: f.type,
+          label: f.label,
+          content: f.content
+        })),
+        submitted_at: new Date().toISOString()
+      };
 
-    setIsSubmitting(false);
-    setShowSuccess(true);
-
-    // Redirect after showing success
-    setTimeout(() => {
-      navigate('/freelancer/your-tasks');
-    }, 3000);
+      await taskService.submitWork(task!.id, submissionData);
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate('/freelancer/your-tasks');
+      }, 3000);
+    } catch (error) {
+      console.error('Error submitting work:', error);
+      alert('Failed to submit work. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const getFileIcon = () => {
-    switch (fileType) {
-      case 'image': return <ImageIcon className="w-6 h-6" />;
-      case 'code': return <Code className="w-6 h-6" />;
-      case 'text': return <FileText className="w-6 h-6" />;
-      case 'pdf': return <FileCode className="w-6 h-6" />;
-      default: return <FileText className="w-6 h-6" />;
+  const renderField = (field: SubmissionField) => {
+    switch (field.type) {
+      case 'text':
+        return (
+          <div key={field.id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-orange-500" />
+                <input
+                  type="text"
+                  value={field.label}
+                  onChange={(e) => updateFieldLabel(field.id, e.target.value)}
+                  placeholder="Field Label (e.g., 'Summary', 'Notes')"
+                  className="bg-gray-900/50 border border-gray-700 rounded px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeField(field.id)}
+                className="text-red-400 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+            <textarea
+              value={field.content}
+              onChange={(e) => updateFieldContent(field.id, e.target.value)}
+              placeholder="Enter your text content here..."
+              rows={6}
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 resize-none"
+            />
+          </div>
+        );
+
+      case 'code':
+        return (
+          <div key={field.id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Code className="w-5 h-5 text-orange-500" />
+                <input
+                  type="text"
+                  value={field.label}
+                  onChange={(e) => updateFieldLabel(field.id, e.target.value)}
+                  placeholder="Field Label (e.g., 'index.js', 'Solution Code')"
+                  className="bg-gray-900/50 border border-gray-700 rounded px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeField(field.id)}
+                className="text-red-400 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+            <textarea
+              value={field.content}
+              onChange={(e) => updateFieldContent(field.id, e.target.value)}
+              placeholder="Paste your code here..."
+              rows={12}
+              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 resize-none font-mono text-sm"
+            />
+          </div>
+        );
+
+      case 'image':
+        return (
+          <div key={field.id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <ImageIcon className="w-5 h-5 text-orange-500" />
+                <input
+                  type="text"
+                  value={field.label}
+                  onChange={(e) => updateFieldLabel(field.id, e.target.value)}
+                  placeholder="Field Label (e.g., 'Screenshot', 'Design Mockup')"
+                  className="bg-gray-900/50 border border-gray-700 rounded px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeField(field.id)}
+                className="text-red-400 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+            {!field.content ? (
+              <label className="block border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-orange-500 transition-colors cursor-pointer">
+                <ImageIcon className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+                <p className="text-gray-300 mb-1">Click to upload image</p>
+                <p className="text-sm text-gray-500">JPG, PNG, GIF up to 10MB</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(field.id, e)}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div>
+                <img
+                  src={field.content}
+                  alt={field.label}
+                  className="w-full h-auto rounded-lg border border-gray-700 mb-3"
+                />
+                <button
+                  type="button"
+                  onClick={() => updateFieldContent(field.id, '')}
+                  className="text-sm text-orange-500 hover:text-orange-400"
+                >
+                  Change Image
+                </button>
+              </div>
+            )}
+          </div>
+        );
     }
   };
 
@@ -151,135 +299,66 @@ const TaskSubmission: React.FC = () => {
           className="mb-8"
         >
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Submit Your Work</h1>
-          <p className="text-xl text-gray-400 mb-4">{task.title}</p>
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-semibold text-orange-500 mb-1">AI Verification Process</h3>
-                <p className="text-sm text-gray-300">
-                  After submission, an AI agent will verify that your work meets all task requirements. Payment will be released automatically upon successful verification.
-                </p>
-              </div>
-            </div>
-          </div>
+          <p className="text-xl text-gray-400">{task.title}</p>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Description */}
+          {/* Submission Fields */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8"
+            className="space-y-4"
           >
-            <label htmlFor="description" className="block text-lg font-semibold text-white mb-3">
-              Description of Your Work *
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              rows={6}
-              placeholder="Describe what you've completed, any challenges you faced, and how your work meets the requirements..."
-              className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors resize-none"
-            />
+            {fields.map((field, index) => (
+              <motion.div
+                key={field.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                {renderField(field)}
+              </motion.div>
+            ))}
           </motion.div>
 
-          {/* File Upload */}
+          {/* Add Field Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-8"
+            className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6"
           >
-            <label className="block text-lg font-semibold text-white mb-3">
-              Upload Files *
-            </label>
-            <p className="text-sm text-gray-400 mb-4">
-              Supported formats: Images (JPG, PNG, GIF), Text files (TXT, MD), Code files (JS, PY, etc.), PDF
-            </p>
-
-            {!uploadedFile ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-700 rounded-lg p-12 text-center hover:border-orange-500 transition-colors cursor-pointer"
+            <p className="text-sm font-semibold text-white mb-3">Add Submission Field:</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => addField('text')}
+                className="flex items-center space-x-2 bg-gray-700/50 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                <Upload className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-300 mb-2">Click to upload or drag and drop</p>
-                <p className="text-sm text-gray-500">Maximum file size: 10MB</p>
-              </div>
-            ) : (
-              <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-orange-500">
-                      {getFileIcon()}
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{uploadedFile.name}</p>
-                      <p className="text-sm text-gray-400">
-                        {(uploadedFile.size / 1024).toFixed(2)} KB
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* File Preview */}
-                {fileType === 'image' && filePreview && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-white mb-2">Preview:</h4>
-                    <img
-                      src={filePreview}
-                      alt="Preview"
-                      className="max-w-full h-auto rounded-lg border border-gray-700"
-                    />
-                  </div>
-                )}
-
-                {fileType === 'code' && filePreview && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-white mb-2">Code Preview:</h4>
-                    <pre className="bg-gray-950 border border-gray-700 rounded-lg p-4 overflow-x-auto text-sm text-gray-300 max-h-96">
-                      <code>{filePreview}</code>
-                    </pre>
-                  </div>
-                )}
-
-                {fileType === 'text' && filePreview && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-white mb-2">Text Preview:</h4>
-                    <div className="bg-gray-950 border border-gray-700 rounded-lg p-4 text-sm text-gray-300 max-h-96 overflow-y-auto whitespace-pre-wrap">
-                      {filePreview}
-                    </div>
-                  </div>
-                )}
-
-                {fileType === 'pdf' && (
-                  <div className="mt-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                    <p className="text-sm text-blue-400">
-                      PDF file uploaded. Preview not available.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleFileChange}
-              accept=".jpg,.jpeg,.png,.gif,.txt,.md,.js,.jsx,.ts,.tsx,.py,.java,.cpp,.c,.html,.css,.json,.pdf"
-              className="hidden"
-            />
+                <Plus className="w-4 h-4" />
+                <FileText className="w-4 h-4" />
+                <span>Text Field</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => addField('code')}
+                className="flex items-center space-x-2 bg-gray-700/50 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <Code className="w-4 h-4" />
+                <span>Code Field</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => addField('image')}
+                className="flex items-center space-x-2 bg-gray-700/50 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <ImageIcon className="w-4 h-4" />
+                <span>Image Field</span>
+              </button>
+            </div>
           </motion.div>
 
           {/* Submit Button */}
@@ -299,7 +378,7 @@ const TaskSubmission: React.FC = () => {
             </Link>
             <motion.button
               type="submit"
-              disabled={isSubmitting || !uploadedFile || !description.trim()}
+              disabled={isSubmitting || fields.length === 0}
               whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
               whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
               className="bg-orange-500 text-white px-8 py-3 rounded-md font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center space-x-2"

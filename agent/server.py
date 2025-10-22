@@ -109,43 +109,23 @@ def get_reasoning_status(interaction_id):
         decision = evaluation.get('decision', 'PENDING')
         status = evaluation.get('status')
         
-        print(f"\n[Reasoning Status] Decision: {decision}, Status: {status}, DB Updated: {evaluation.get('db_updated')}, Supabase: {supabase is not None}")
-        
         # If approved and completed, update database
         if decision == 'APPROVED' and status == 'completed':
-            print(f"[DB Update] Conditions met for update")
-            
-            if not supabase:
-                print(f"[DB Update] ERROR: Supabase not configured!")
-            
             if not evaluation.get('db_updated'):
                 if supabase:
                     try:
                         task_id = request.args.get('task_id')
                         freelancer_wallet = request.args.get('freelancer_wallet')
                         
-                        print(f"[DB Update] Attempting: task_id={task_id}, wallet={freelancer_wallet}")
-                        
                         if task_id and freelancer_wallet:
-                            # Update task with assigned freelancer
-                            result = supabase.table('tasks').update({
+                            supabase.table('tasks').update({
                                 'freelancer_wallet': freelancer_wallet,
                                 'status': 'in-progress'
                             }).eq('id', task_id).execute()
                             
-                            print(f"[DB Update] ✅ Success: {result.data}")
-                            
                             evaluation['db_updated'] = True
-                        else:
-                            print(f"[DB Update] ❌ Missing task_id or wallet")
                     except Exception as e:
-                        print(f"[DB Update] ❌ Error: {e}")
-                        import traceback
-                        traceback.print_exc()
-                else:
-                    print(f"[DB Update] ❌ Supabase not initialized")
-            else:
-                print(f"[DB Update] Already updated, skipping")
+                        print(f"Database update error: {e}")
         
         return jsonify({
             'status': status,

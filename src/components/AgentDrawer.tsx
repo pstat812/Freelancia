@@ -72,7 +72,6 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
 
     const pollInterval = setInterval(async () => {
       try {
-        // Get wallet and task from localStorage
         const evalData = localStorage.getItem('currentEvaluation');
         let freelancerWallet = '';
         let currentTaskId = taskId || '';
@@ -82,8 +81,6 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
           freelancerWallet = parsed.wallet || '';
           currentTaskId = currentTaskId || parsed.taskId || '';
         }
-        
-        console.log('[AgentDrawer] Polling with:', { taskId: currentTaskId, wallet: freelancerWallet });
         
         const response = await fetch(
           `http://localhost:5000/reasoning-status/${interactionId}?task_id=${currentTaskId}&freelancer_wallet=${freelancerWallet}`
