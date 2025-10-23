@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, FileText, Image as ImageIcon, Code, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Code, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { taskService } from '../../services/taskService';
 import type { Task } from '../../services/taskService';
 
 type SubmissionField = {
   id: string;
-  type: 'text' | 'code' | 'image';
+  type: 'text' | 'code';
   label: string;
   content: string;
 };
@@ -58,7 +58,7 @@ const TaskSubmission: React.FC = () => {
     );
   }
 
-  const addField = (type: 'text' | 'code' | 'image') => {
+  const addField = (type: 'text' | 'code') => {
     const newField: SubmissionField = {
       id: Date.now().toString(),
       type,
@@ -84,16 +84,6 @@ const TaskSubmission: React.FC = () => {
     ));
   };
 
-  const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      updateFieldContent(id, reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +136,7 @@ const TaskSubmission: React.FC = () => {
                   type="text"
                   value={field.label}
                   onChange={(e) => updateFieldLabel(field.id, e.target.value)}
-                  placeholder="Field Label (e.g., 'Summary', 'Notes')"
+                  placeholder="Field Label"
                   className="bg-gray-900/50 border border-gray-700 rounded px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
                 />
               </div>
@@ -178,7 +168,7 @@ const TaskSubmission: React.FC = () => {
                   type="text"
                   value={field.label}
                   onChange={(e) => updateFieldLabel(field.id, e.target.value)}
-                  placeholder="Field Label (e.g., 'index.js', 'Solution Code')"
+                  placeholder="Field Label"
                   className="bg-gray-900/50 border border-gray-700 rounded px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
                 />
               </div>
@@ -200,58 +190,6 @@ const TaskSubmission: React.FC = () => {
           </div>
         );
 
-      case 'image':
-        return (
-          <div key={field.id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <ImageIcon className="w-5 h-5 text-orange-500" />
-                <input
-                  type="text"
-                  value={field.label}
-                  onChange={(e) => updateFieldLabel(field.id, e.target.value)}
-                  placeholder="Field Label (e.g., 'Screenshot', 'Design Mockup')"
-                  className="bg-gray-900/50 border border-gray-700 rounded px-3 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeField(field.id)}
-                className="text-red-400 hover:text-red-300 transition-colors"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </div>
-            {!field.content ? (
-              <label className="block border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-orange-500 transition-colors cursor-pointer">
-                <ImageIcon className="w-10 h-10 text-gray-500 mx-auto mb-3" />
-                <p className="text-gray-300 mb-1">Click to upload image</p>
-                <p className="text-sm text-gray-500">JPG, PNG, GIF up to 10MB</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(field.id, e)}
-                  className="hidden"
-                />
-              </label>
-            ) : (
-              <div>
-                <img
-                  src={field.content}
-                  alt={field.label}
-                  className="w-full h-auto rounded-lg border border-gray-700 mb-3"
-                />
-                <button
-                  type="button"
-                  onClick={() => updateFieldContent(field.id, '')}
-                  className="text-sm text-orange-500 hover:text-orange-400"
-                >
-                  Change Image
-                </button>
-              </div>
-            )}
-          </div>
-        );
     }
   };
 
@@ -348,15 +286,6 @@ const TaskSubmission: React.FC = () => {
                 <Plus className="w-4 h-4" />
                 <Code className="w-4 h-4" />
                 <span>Code Field</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => addField('image')}
-                className="flex items-center space-x-2 bg-gray-700/50 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <ImageIcon className="w-4 h-4" />
-                <span>Image Field</span>
               </button>
             </div>
           </motion.div>
