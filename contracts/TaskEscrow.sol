@@ -74,9 +74,9 @@ contract TaskEscrow is ReentrancyGuard {
     }
     
     function assignFreelancer(string memory taskId, address freelancer) external {
-        require(tasks[taskId].client == msg.sender, "Only client can assign freelancer");
         require(tasks[taskId].fundsDeposited, "Funds not deposited");
         require(freelancer != address(0), "Invalid freelancer address");
+        require(taskFreelancers[taskId] == address(0), "Freelancer already assigned");
         
         taskFreelancers[taskId] = freelancer;
     }
@@ -84,10 +84,14 @@ contract TaskEscrow is ReentrancyGuard {
     function releasePayment(string memory taskId) external nonReentrant {
         Task memory task = tasks[taskId];
         require(task.fundsDeposited, "No funds deposited for this task");
-        require(task.client == msg.sender, "Only client can release payment");
         
         address freelancer = taskFreelancers[taskId];
         require(freelancer != address(0), "No freelancer assigned");
+        
+        require(
+            msg.sender == task.client || msg.sender == freelancer,
+            "Only client or assigned freelancer can release payment"
+        );
         
         uint256 amount = task.amount;
         

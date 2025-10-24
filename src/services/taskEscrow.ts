@@ -152,32 +152,30 @@ export class TaskEscrowService {
   async assignFreelancer(taskId: string, freelancerAddress: string): Promise<string> {
     if (!this.taskEscrowContract) await this.initialize();
 
-    console.log('Assigning freelancer to task...', {
-      taskId,
-      freelancerAddress
-    });
-
     const tx = await this.taskEscrowContract!.assignFreelancer(taskId, freelancerAddress);
-    console.log('Assign transaction sent:', tx.hash);
-    
     await tx.wait();
-    console.log('Freelancer assigned');
 
     return tx.hash;
   }
 
-  async releasePayment(taskId: string): Promise<string> {
-    if (!this.taskEscrowContract) await this.initialize();
+  async releasePayment(taskId: string): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    try {
+      if (!this.taskEscrowContract) await this.initialize();
 
-    console.log('Releasing payment for task...', taskId);
+      const tx = await this.taskEscrowContract!.releasePayment(taskId);
+      const receipt = await tx.wait();
 
-    const tx = await this.taskEscrowContract!.releasePayment(taskId);
-    console.log('Release payment transaction sent:', tx.hash);
-    
-    await tx.wait();
-    console.log('Payment released');
-
-    return tx.hash;
+      return {
+        success: true,
+        txHash: receipt.hash
+      };
+    } catch (error: any) {
+      console.error('Error releasing payment:', error);
+      return {
+        success: false,
+        error: error.message || 'Payment release failed'
+      };
+    }
   }
 
   async getTaskFreelancer(taskId: string): Promise<string> {
@@ -188,4 +186,8 @@ export class TaskEscrowService {
 }
 
 export const taskEscrowService = new TaskEscrowService();
+
+export const releasePayment = async (taskId: string): Promise<{ success: boolean; txHash?: string; error?: string }> => {
+  return await taskEscrowService.releasePayment(taskId);
+};
 

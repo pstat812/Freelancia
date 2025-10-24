@@ -178,8 +178,7 @@ export class TaskService {
     const { error } = await supabase
       .from('tasks')
       .update({ 
-        Submission: submissionData,
-        status: 'completed' 
+        Submission: submissionData
       })
       .eq('id', taskId);
 
