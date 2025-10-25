@@ -9,7 +9,9 @@ from message_models import (
     IntroductionAcknowledgment,
     ProfileDataMessage,
     QuestionMessage,
-    QuestionResponse
+    QuestionResponse,
+    VerificationRequest,
+    VerificationResponse
 )
 from queue import Queue
 import asyncio
@@ -38,6 +40,9 @@ evaluations = {}
 # Queue for new evaluation requests
 evaluation_queue = Queue()
 
+verification_queue = Queue()
+verifications = {}
+
 def generate_introduction_message(job_title: str) -> str:
     """Use ASI-1 LLM to generate introduction message"""
     try:
@@ -65,12 +70,102 @@ def generate_introduction_message(job_title: str) -> str:
     except Exception as e:
         return f"Hello, I am going to evaluate if your freelancer has the ability to do this task. I will ask you questions, and you need to respond with your analysis of the user profile."
 
+async def verify_submission(ctx: Context, task_data: dict, submission_data: dict, interaction_id: str):
+    """Verify submitted work against task requirements"""
+    try:
+        submission_text = ""
+        for field in submission_data.get('fields', []):
+            submission_text += f"\n{field['label']}:\n{field['content']}\n"
+        
+        prompt = f"""
+        Task Description: {task_data['description']}
+        
+        Task Requirements:
+        {chr(10).join(f"- {req}" for req in task_data['requirements'])}
+        
+        Submitted Work:
+        {submission_text}
+        
+        You are evaluating a freelancer's work submission. Be LENIENT and SUPPORTIVE in your evaluation.
+        
+        IMPORTANT Guidelines:
+        - If the freelancer has made a REASONABLE ATTEMPT at the task, APPROVE it
+        - If they addressed MOST of the requirements, APPROVE it
+        - If the work shows EFFORT and UNDERSTANDING, APPROVE it
+        - Only REJECT if the work is clearly OFF-TOPIC or shows NO EFFORT
+        
+        Respond with:
+        1. "APPROVED" if the work shows reasonable effort and addresses the task (be generous!)
+        2. "REJECTED" only if completely off-topic or no effort shown
+        
+        Then provide brief, ENCOURAGING feedback.
+        """
+        
+        verifications[interaction_id]['conversation'].append({
+            'id': str(uuid4()),
+            'sender': 'client_agent',
+            'message': 'Analyzing submitted work against task requirements...',
+            'timestamp': datetime.now().isoformat(),
+            'isThinking': True
+        })
+        
+        await asyncio.sleep(1)
+        
+        response = asi_client.chat.completions.create(
+            model="asi1-mini",
+            messages=[
+                {"role": "system", "content": "You are a supportive reviewer evaluating freelancer work. Be lenient and encouraging. Approve if reasonable effort is shown. Only reject if completely off-topic."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=200,
+        )
+        
+        result_text = str(response.choices[0].message.content)
+        
+        # Default to APPROVED unless explicitly rejected
+        if 'REJECTED' in result_text.upper() and 'NOT REJECTED' not in result_text.upper():
+            decision = 'REJECTED'
+            feedback = result_text.replace('REJECTED', '').strip()
+            if not feedback:
+                feedback = "The submitted work needs improvement to meet the task requirements."
+        else:
+            decision = 'APPROVED'
+            feedback = result_text.replace('APPROVED', '').strip()
+            if not feedback:
+                feedback = "Great work! The submission meets the task requirements."
+        
+        verifications[interaction_id]['conversation'][-1] = {
+            'id': str(uuid4()),
+            'sender': 'client_agent',
+            'message': f"{decision}: {feedback}",
+            'timestamp': datetime.now().isoformat(),
+            'isThinking': False
+        }
+        
+        verifications[interaction_id]['status'] = 'completed'
+        verifications[interaction_id]['decision'] = decision
+        verifications[interaction_id]['feedback'] = feedback
+        
+        ctx.logger.info(f"Verification decision: {decision}")
+        
+    except Exception as e:
+        ctx.logger.error(f"Verification error: {e}")
+        verifications[interaction_id]['status'] = 'error'
+        verifications[interaction_id]['conversation'].append({
+            'id': str(uuid4()),
+            'sender': 'system',
+            'message': 'Error during verification. Please try again.',
+            'timestamp': datetime.now().isoformat(),
+            'isThinking': False
+        })
+
 # Create protocol for evaluation
 evaluation_protocol = Protocol("Evaluation")
 
 @client_agent.on_interval(period=2.0)
-async def check_evaluation_queue(ctx: Context):
-    """Check for new evaluation requests periodically"""
+async def check_queues(ctx: Context):
+    """Check for new evaluation and verification requests periodically"""
+    # Check evaluation queue
     if not evaluation_queue.empty():
         eval_data = evaluation_queue.get()
         
@@ -123,6 +218,15 @@ async def check_evaluation_queue(ctx: Context):
                 interaction_id=interaction_id
             )
         )
+    
+    # Check verification queue
+    if not verification_queue.empty():
+        request = verification_queue.get()
+        interaction_id = request['interaction_id']
+        
+        ctx.logger.info(f"Processing verification request: {interaction_id}")
+        
+        await verify_submission(ctx, request['task_data'], request['submission_data'], interaction_id)
 
 def generate_questions(job_description: str, requirements: list) -> list:
     """Generate questions based on job description and requirements using ASI-1"""
@@ -403,3 +507,21 @@ def trigger_evaluation(interaction_id: str, job_title: str, job_description: str
         'profile_data': profile_data,
         'freelancer_address': freelancer_address
     })
+
+def trigger_verification(task_data: dict, submission_data: dict, interaction_id: str):
+    """Trigger work verification process"""
+    verification_queue.put({
+        'task_data': task_data,
+        'submission_data': submission_data,
+        'interaction_id': interaction_id
+    })
+    
+    verifications[interaction_id] = {
+        'status': 'processing',
+        'conversation': [],
+        'decision': 'PENDING'
+    }
+
+def get_verification_status(interaction_id: str) -> dict:
+    """Get the current status of a verification"""
+    return verifications.get(interaction_id, {})

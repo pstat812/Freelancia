@@ -37,3 +37,16 @@ class QuestionResponse(Model):
     answer: str
     interaction_id: str
 
+class VerificationRequest(Model):
+    """Request to verify submitted work"""
+    task_description: str
+    task_requirements: list
+    submission_data: dict
+    interaction_id: str
+
+class VerificationResponse(Model):
+    """Response after work verification"""
+    decision: str
+    feedback: str
+    interaction_id: str
+

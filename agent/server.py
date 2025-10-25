@@ -12,7 +12,13 @@ from queue import Queue
 from supabase import create_client, Client
 
 # Import agents
-from client_agent import client_agent, get_evaluation_status, trigger_evaluation
+from client_agent import (
+    client_agent, 
+    get_evaluation_status, 
+    trigger_evaluation,
+    get_verification_status,
+    trigger_verification
+)
 from freelancer_agent import freelancer_agent
 
 load_dotenv()
@@ -109,7 +115,7 @@ def get_reasoning_status(interaction_id):
         decision = evaluation.get('decision', 'PENDING')
         status = evaluation.get('status')
         
-        # If approved and completed, update database
+        # If approved and completed, update database and notify frontend
         if decision == 'APPROVED' and status == 'completed':
             if not evaluation.get('db_updated'):
                 if supabase:
@@ -124,6 +130,8 @@ def get_reasoning_status(interaction_id):
                             }).eq('id', task_id).execute()
                             
                             evaluation['db_updated'] = True
+                            evaluation['needs_smart_contract_assignment'] = True
+                            evaluation['freelancer_wallet'] = freelancer_wallet
                     except Exception as e:
                         print(f"Database update error: {e}")
         
@@ -131,8 +139,107 @@ def get_reasoning_status(interaction_id):
             'status': status,
             'conversation': evaluation.get('conversation', []),
             'decision': decision,
-            'waiting_for_user': False
+            'waiting_for_user': False,
+            'needs_smart_contract_assignment': evaluation.get('needs_smart_contract_assignment', False),
+            'freelancer_wallet': evaluation.get('freelancer_wallet', '')
         })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/verify-submission', methods=['POST'])
+def verify_submission():
+    """Start work verification process"""
+    try:
+        data = request.json
+        interaction_id = str(uuid.uuid4())
+        
+        print(f"[Verify Submission] Starting verification: {interaction_id}")
+        print(f"Task Description: {data.get('task_description', 'N/A')[:50]}...")
+        print(f"Requirements: {data.get('task_requirements', [])}")
+        print(f"Submission Fields: {len(data.get('submission_data', {}).get('fields', []))}")
+        
+        trigger_verification(
+            task_data={
+                'description': data['task_description'],
+                'requirements': data['task_requirements']
+            },
+            submission_data=data['submission_data'],
+            interaction_id=interaction_id
+        )
+        
+        print(f"[Verify Submission] Verification queued successfully")
+        
+        return jsonify({
+            'interaction_id': interaction_id,
+            'status': 'processing'
+        })
+    except Exception as e:
+        print(f"[Verify Submission] ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/verification-status/<interaction_id>', methods=['GET'])
+def get_verification_result(interaction_id):
+    """Get verification status and result"""
+    try:
+        verification = get_verification_status(interaction_id)
+        
+        if not verification:
+            return jsonify({'error': 'Verification not found'}), 404
+        
+        decision = verification.get('decision', 'PENDING')
+        status = verification.get('status')
+        
+        return jsonify({
+            'status': status,
+            'conversation': verification.get('conversation', []),
+            'decision': decision,
+            'feedback': verification.get('feedback', ''),
+            'payment_status': verification.get('payment_status', 'pending'),
+            'db_updated': verification.get('db_updated', False)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/complete-payment/<interaction_id>', methods=['POST'])
+def complete_payment(interaction_id):
+    """Mark payment as completed and update task status"""
+    try:
+        data = request.json
+        task_id = data.get('task_id')
+        tx_hash = data.get('tx_hash')
+        
+        verification = get_verification_status(interaction_id)
+        
+        if not verification:
+            return jsonify({'error': 'Verification not found'}), 404
+        
+        print(f"[Payment] Completing payment for task {task_id}, tx: {tx_hash}")
+        
+        if supabase and task_id:
+            try:
+                supabase.table('tasks').update({
+                    'status': 'completed'
+                }).eq('id', task_id).execute()
+                
+                print(f"[Payment] ✅ Task {task_id} marked as completed")
+                
+                verification['payment_status'] = 'completed'
+                verification['db_updated'] = True
+                verification['tx_hash'] = tx_hash
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Payment completed successfully'
+                })
+            except Exception as e:
+                print(f"[Payment] ❌ Error: {e}")
+                return jsonify({'error': str(e)}), 500
+        else:
+            return jsonify({'error': 'Missing task_id or Supabase not configured'}), 400
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
