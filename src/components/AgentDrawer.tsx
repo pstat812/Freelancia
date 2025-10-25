@@ -15,9 +15,10 @@ interface AgentDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   interactionId: string | null;
-  agentType: 'client' | 'freelancer';
-  title: string;
+  agentType?: 'client' | 'freelancer';
+  title?: string;
   taskId?: string;
+  isVerification?: boolean;
 }
 
 export const AgentDrawer: React.FC<AgentDrawerProps> = ({
@@ -26,18 +27,21 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   interactionId,
   agentType,
   title,
-  taskId
+  taskId,
+  isVerification = false
 }) => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<string>('processing');
   const [error, setError] = useState<string>('');
   const [decision, setDecision] = useState<string>('');
-  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const paymentInitiatedRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (interactionId && isOpen) {
+      paymentInitiatedRef.current = false;
       pollReasoningStatus();
     }
   }, [interactionId, isOpen]);
@@ -46,25 +50,153 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (decision === 'APPROVED' && status === 'completed' && redirectCountdown === null) {
-      setRedirectCountdown(3);
-    }
-  }, [decision, status]);
-
-  useEffect(() => {
-    if (redirectCountdown !== null && redirectCountdown > 0) {
-      const timer = setTimeout(() => {
-        setRedirectCountdown(redirectCountdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (redirectCountdown === 0) {
-      navigate('/freelancer/your-tasks');
-    }
-  }, [redirectCountdown, navigate]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSmartContractAssignment = async (freelancerWallet: string) => {
+    try {
+      const { taskEscrowService } = await import('../services/taskEscrow');
+      
+      const evalData = localStorage.getItem('currentEvaluation');
+      const taskId = evalData ? JSON.parse(evalData).taskId : null;
+      
+      if (!taskId || !freelancerWallet) {
+        return;
+      }
+
+      await taskEscrowService.assignFreelancer(taskId, freelancerWallet);
+    } catch (error: any) {
+      console.error('Error assigning freelancer to smart contract:', error);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (paymentStatus !== 'pending' || paymentInitiatedRef.current) return;
+    
+    paymentInitiatedRef.current = true;
+    setPaymentStatus('processing');
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      sender: 'system' as any,
+      message: 'Preparing payment release...',
+      timestamp: new Date().toISOString(),
+      isThinking: true
+    }]);
+
+    try {
+      const { taskEscrowService, releasePayment } = await import('../services/taskEscrow');
+      
+      const verifyData = localStorage.getItem('currentVerification');
+      const taskId = verifyData ? JSON.parse(verifyData).taskId : null;
+      
+      if (!taskId) {
+        throw new Error('Task ID not found');
+      }
+
+      // Step 1: Check if freelancer is assigned, if not assign them first
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          id: Date.now().toString(),
+          sender: 'system' as any,
+          message: 'Assigning freelancer to smart contract...',
+          timestamp: new Date().toISOString(),
+          isThinking: true
+        };
+        return updated;
+      });
+
+      try {
+        const currentFreelancer = await taskEscrowService.getTaskFreelancer(taskId);
+        
+        if (currentFreelancer === '0x0000000000000000000000000000000000000000') {
+          const walletAddress = verifyData ? JSON.parse(verifyData).wallet : localStorage.getItem('walletAddress');
+          if (walletAddress) {
+            await taskEscrowService.assignFreelancer(taskId, walletAddress);
+          } else {
+            throw new Error('Wallet address not found');
+          }
+        }
+      } catch (assignError) {
+        throw assignError;
+      }
+
+      // Step 2: Release payment
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          id: Date.now().toString(),
+          sender: 'system' as any,
+          message: 'Releasing PYUSD payment...',
+          timestamp: new Date().toISOString(),
+          isThinking: true
+        };
+        return updated;
+      });
+
+      const result = await releasePayment(taskId);
+      
+      if (result.success) {
+        setPaymentStatus('completed');
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            id: Date.now().toString(),
+            sender: 'system' as any,
+            message: `✅ PYUSD transferred successfully!`,
+            timestamp: new Date().toISOString(),
+            isThinking: false
+          };
+          return updated;
+        });
+        
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            sender: 'system' as any,
+            message: `🎉 Task completed! You can now close this window and check your wallet.`,
+            timestamp: new Date().toISOString(),
+            isThinking: false
+          }]);
+        }, 500);
+
+        await fetch(`http://localhost:5000/complete-payment/${interactionId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task_id: taskId,
+            tx_hash: result.txHash
+          })
+        });
+      } else {
+        setPaymentStatus('failed');
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            id: Date.now().toString(),
+            sender: 'system' as any,
+            message: `Payment failed: ${result.error}`,
+            timestamp: new Date().toISOString(),
+            isThinking: false
+          };
+          return updated;
+        });
+      }
+    } catch (error: any) {
+      setPaymentStatus('failed');
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          id: Date.now().toString(),
+          sender: 'system' as any,
+          message: `Payment error: ${error.message}`,
+          timestamp: new Date().toISOString(),
+          isThinking: false
+        };
+        return updated;
+      });
+    }
   };
 
   const pollReasoningStatus = async () => {
@@ -72,19 +204,33 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
 
     const pollInterval = setInterval(async () => {
       try {
-        const evalData = localStorage.getItem('currentEvaluation');
-        let freelancerWallet = '';
-        let currentTaskId = taskId || '';
+        let url = '';
         
-        if (evalData) {
-          const parsed = JSON.parse(evalData);
-          freelancerWallet = parsed.wallet || '';
-          currentTaskId = currentTaskId || parsed.taskId || '';
+        if (isVerification) {
+          const verifyData = localStorage.getItem('currentVerification');
+          let currentTaskId = taskId || '';
+          
+          if (verifyData) {
+            const parsed = JSON.parse(verifyData);
+            currentTaskId = currentTaskId || parsed.taskId || '';
+          }
+          
+          url = `http://localhost:5000/verification-status/${interactionId}?task_id=${currentTaskId}`;
+        } else {
+          const evalData = localStorage.getItem('currentEvaluation');
+          let freelancerWallet = '';
+          let currentTaskId = taskId || '';
+          
+          if (evalData) {
+            const parsed = JSON.parse(evalData);
+            freelancerWallet = parsed.wallet || '';
+            currentTaskId = currentTaskId || parsed.taskId || '';
+          }
+          
+          url = `http://localhost:5000/reasoning-status/${interactionId}?task_id=${currentTaskId}&freelancer_wallet=${freelancerWallet}`;
         }
         
-        const response = await fetch(
-          `http://localhost:5000/reasoning-status/${interactionId}?task_id=${currentTaskId}&freelancer_wallet=${freelancerWallet}`
-        );
+        const response = await fetch(url);
         
         if (response.ok) {
           const data = await response.json();
@@ -94,6 +240,18 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
           
           if (data.status === 'completed' || data.status === 'failed') {
             clearInterval(pollInterval);
+            
+            if (!isVerification && data.decision === 'APPROVED' && data.needs_smart_contract_assignment) {
+              handleSmartContractAssignment(data.freelancer_wallet);
+              
+              setTimeout(() => {
+                navigate('/freelancer/your-tasks');
+              }, 3000);
+            }
+            
+            if (isVerification && data.decision === 'APPROVED' && !data.db_updated && paymentStatus === 'pending' && !paymentInitiatedRef.current) {
+              handlePayment();
+            }
           }
           
           if (data.error) {
@@ -101,8 +259,8 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
           }
         }
       } catch (err) {
-        console.error('Error polling reasoning status:', err);
-        setError('Failed to fetch reasoning status');
+        console.error('Error polling status:', err);
+        setError('Failed to fetch status');
         clearInterval(pollInterval);
       }
     }, 1000);
@@ -128,7 +286,7 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
     return 'bg-orange-500/10 border-orange-500/30';
   };
 
-  const getAgentIcon = (sender: string) => {
+  const getAgentIcon = () => {
     return <Bot className="w-5 h-5" />;
   };
 
@@ -156,9 +314,9 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                 <div className="flex items-center space-x-3">
                   <Bot className="w-8 h-8 text-orange-500" />
                   <div>
-                    <h2 className="text-xl font-bold text-white">{title}</h2>
+                    <h2 className="text-xl font-bold text-white">{isVerification ? 'AI Work Verification' : (title || 'AI Agent Evaluation')}</h2>
                     <p className="text-sm text-gray-400">
-                      {agentType === 'client' ? 'Client Agent' : 'Freelancer Agent'}
+                      {isVerification ? 'Verifying Submission' : (agentType === 'client' ? 'Client Agent' : 'Freelancer Agent')}
                     </p>
                   </div>
                 </div>
@@ -205,7 +363,7 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                   <div className="max-w-[85%]">
                     <div className="flex items-center space-x-2 mb-1">
                       <div className={`${msg.sender === 'client_agent' ? 'text-blue-400' : 'text-purple-400'}`}>
-                        {getAgentIcon(msg.sender)}
+                        {getAgentIcon()}
                       </div>
                       <span className="text-xs font-semibold text-gray-400">
                         {getAgentName(msg.sender)}
@@ -251,11 +409,6 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                   }`}>
                     {decision}
                   </div>
-                  {decision === 'APPROVED' && redirectCountdown !== null && (
-                    <div className="mt-4 text-sm text-gray-400">
-                      Redirecting to Your Tasks in {redirectCountdown}s...
-                    </div>
-                  )}
                 </motion.div>
               )}
 

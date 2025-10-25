@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, FileText, Code, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { taskService } from '../../services/taskService';
 import type { Task } from '../../services/taskService';
+import AgentDrawer from '../../components/AgentDrawer';
 
 type SubmissionField = {
   id: string;
@@ -21,6 +23,8 @@ const TaskSubmission: React.FC = () => {
   const [fields, setFields] = useState<SubmissionField[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [interactionId, setInteractionId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadTask = async () => {
@@ -112,10 +116,31 @@ const TaskSubmission: React.FC = () => {
 
       await taskService.submitWork(task!.id, submissionData);
       
-      setShowSuccess(true);
-      setTimeout(() => {
-        navigate('/freelancer/your-tasks');
-      }, 3000);
+      const response = await fetch('http://localhost:5000/verify-submission', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task_description: task!.description,
+          task_requirements: task!.requirements,
+          submission_data: submissionData
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setInteractionId(data.interaction_id);
+        setIsDrawerOpen(true);
+        
+        const walletAddress = localStorage.getItem('walletAddress');
+        localStorage.setItem('currentVerification', JSON.stringify({
+          taskId: task!.id,
+          wallet: walletAddress
+        }));
+      } else {
+        alert('Failed to start verification. Please try again.');
+      }
     } catch (error) {
       console.error('Error submitting work:', error);
       alert('Failed to submit work. Please try again.');
@@ -327,6 +352,16 @@ const TaskSubmission: React.FC = () => {
           </motion.div>
         </form>
       </div>
+
+      {isDrawerOpen && interactionId && (
+        <AgentDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          interactionId={interactionId}
+          taskId={task?.id}
+          isVerification={true}
+        />
+      )}
     </div>
   );
 };
