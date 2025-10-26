@@ -21,7 +21,7 @@ const ERC20_ABI = [
 ];
 
 // Contract addresses from environment variables
-const TASK_ESCROW_ADDRESS = import.meta.env.VITE_TASK_ESCROW_ADDRESS;
+const TASK_ESCROW_ADDRESS = import.meta.env.TASK_ESCROW_ADDRESS;
 const PYUSD_TOKEN_ADDRESS = import.meta.env.PYUSD_ADDRESS || '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9';
 
 export class TaskEscrowService {
@@ -36,7 +36,7 @@ export class TaskEscrowService {
     }
 
     if (!TASK_ESCROW_ADDRESS) {
-      throw new Error('TaskEscrow contract address not configured. Please add VITE_TASK_ESCROW_ADDRESS to your .env file');
+      throw new Error('TaskEscrow contract address not configured. Please add TASK_ESCROW_ADDRESS to your .env file');
     }
 
     this.provider = new BrowserProvider(window.ethereum);

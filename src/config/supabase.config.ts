@@ -1,6 +1,6 @@
 export const supabaseConfig = {
-  url: import.meta.env.VITE_SUPABASE_URL,
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  url: import.meta.env.SUPABASE_URL,
+  anonKey: import.meta.env.SUPABASE_ANON_KEY,
 };
 
 export const networkConfig = {
