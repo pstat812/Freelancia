@@ -27,7 +27,7 @@ app = Flask(__name__)
 CORS(app)
 
 supabase_url = os.getenv('SUPABASE_URL') or os.getenv('SUPABASE_URL')
-supabase_key = os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_ANON_KEY')
+supabase_key = os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_ANON_KEY')
 
 print(f"\n[Supabase Config]")
 print(f"URL: {supabase_url[:30] + '...' if supabase_url else 'NOT SET'}")
