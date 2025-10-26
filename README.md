@@ -71,10 +71,10 @@ npm install
 Create `.env` file in root directory:
 
 ```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-TASK_ESCROW_ADDRESS=deployed_contract_address
-PYUSD_TOKEN_ADDRESS=0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_TASK_ESCROW_ADDRESS=deployed_contract_address
+VITE_PYUSD_TOKEN_ADDRESS=0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9
 SEPOLIA_RPC_URL=your_sepolia_rpc_url
 SEPOLIA_PRIVATE_KEY=your_private_key
 ```
@@ -103,8 +103,8 @@ pip install -r requirements.txt
 Create `.env` file in agent directory:
 
 ```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_key
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_key
 ASI_API_KEY=your_asi_key
 ```
 
