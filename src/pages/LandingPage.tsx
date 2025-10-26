@@ -531,10 +531,10 @@ const FreelancePlatform: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center">
               <Briefcase className="text-orange-500 w-6 h-6" />
-              <span className="text-lg font-bold text-white ml-2">freelanceai</span>
+              <span className="text-lg font-bold text-white ml-2">freelancia</span>
             </div>
             <p className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} freelanceai. All rights reserved.
+              © {new Date().getFullYear()} freelancia. All rights reserved.
             </p>
           </div>
 

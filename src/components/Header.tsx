@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ userRole, onSelectRole }) => {
           {/* Logo → navigate to landing */}
           <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Briefcase className="text-orange-500 w-7 h-7" />
-            <span className="text-xl font-bold text-white">freelanceai</span>
+            <span className="text-xl font-bold text-white">freelancia</span>
           </Link>
 
           {/* Navigation */}
